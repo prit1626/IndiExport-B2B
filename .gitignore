@@ -1,0 +1,43 @@
+# Build and log files
+backend/*.txt
+backend/compile_log*.txt
+backend/startup_log*.txt
+backend/app_output.txt
+backend/build_err.txt
+backend/last_error.txt
+backend/startup_err.txt
+backend/test_request.json
+
+# Java
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/.project
+backend/.classpath
+backend/.settings/
+backend/.factorypath
+backend/.springBeans
+backend/.sts4-cache
+
+# IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Other
+node_modules/
+dist/
+build/
+
+
+
+
+*.md
+*.sh
+RFQ_Postman_Collection.json
