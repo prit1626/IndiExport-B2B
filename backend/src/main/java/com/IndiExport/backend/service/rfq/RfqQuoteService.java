@@ -45,6 +45,16 @@ public class RfqQuoteService {
         SellerProfile seller = sellerProfileRepository.findById(sellerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
 
+        // BUG FIX: Prevent seller from quoting their own RFQ
+        if (rfq.getBuyer().getUser().getId().equals(seller.getUser().getId())) {
+            throw new BusinessRuleViolationException("Sellers cannot submit quotes for their own RFQs");
+        }
+
+        // BUG FIX: Ensure validityUntil is in the future
+        if (request.getValidityUntil() != null && request.getValidityUntil().isBefore(java.time.Instant.now())) {
+            throw new ValidationException("Quote validity must be a future date");
+        }
+
         // 3. Create Quote
         RfqQuote quote = new RfqQuote();
         quote.setRfq(rfq);

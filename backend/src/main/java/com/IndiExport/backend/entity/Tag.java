@@ -26,7 +26,7 @@ public class Tag {
     @Column(nullable = false, unique = true, length = 50)
     private String name;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public Tag(String name) {

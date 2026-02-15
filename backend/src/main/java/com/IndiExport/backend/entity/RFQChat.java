@@ -40,7 +40,7 @@ public class RFQChat {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String messageText;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     @Builder.Default
     private LocalDateTime sentAt = LocalDateTime.now();
 

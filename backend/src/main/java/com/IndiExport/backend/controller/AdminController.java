@@ -223,29 +223,6 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * GET /api/v1/admin/disputes
-     * Get all disputes with pagination
-     * Only accessible to ADMIN role
-     * 
-     * @param page Pagination page number
-     * @param status Filter by dispute status (optional)
-     * @return Paginated disputes list
-     */
-    @GetMapping("/disputes")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> getDisputes(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false) String status) {
-        UUID adminId = getCurrentUserId();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("page", page);
-        response.put("totalDisputes", 0);
-        response.put("disputes", new ArrayList<>());
-        
-        return ResponseEntity.ok(response);
-    }
 
     /**
      * Extract userId from Spring Security Authentication

@@ -53,7 +53,7 @@ public class Notification {
     @Column
     private UUID relatedEntityId; // ID of related order, product, etc.
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 

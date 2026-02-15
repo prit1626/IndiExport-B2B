@@ -18,7 +18,9 @@ import java.util.UUID;
         @Index(name = "idx_orders_seller_id", columnList = "seller_id"),
         @Index(name = "idx_orders_status", columnList = "status"),
         @Index(name = "idx_orders_rfq_id", columnList = "rfq_id"),
-        @Index(name = "idx_orders_created_at", columnList = "created_at")
+        @Index(name = "idx_orders_created_at", columnList = "created_at"),
+        @Index(name = "idx_orders_seller_created", columnList = "seller_id, created_at"),
+        @Index(name = "idx_orders_buyer_created", columnList = "buyer_id, created_at")
 })
 public class Order {
 
@@ -53,6 +55,9 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
+
+    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
+    private Payment payment;
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private ShippingQuote shippingQuote;
@@ -91,10 +96,10 @@ public class Order {
     @Column(columnDefinition = "DATE")
     private java.time.LocalDate actualDeliveryDate;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -147,6 +152,9 @@ public class Order {
 
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
+
+    public Payment getPayment() { return payment; }
+    public void setPayment(Payment payment) { this.payment = payment; }
 
     public ShippingQuote getShippingQuote() { return shippingQuote; }
     public void setShippingQuote(ShippingQuote shippingQuote) { this.shippingQuote = shippingQuote; }

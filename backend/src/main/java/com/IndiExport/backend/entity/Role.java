@@ -33,7 +33,7 @@ public class Role {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 

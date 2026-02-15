@@ -58,7 +58,7 @@ public class OrderItem {
     @Column(nullable = false)
     private long lineTotalPaise;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public OrderItem() {}

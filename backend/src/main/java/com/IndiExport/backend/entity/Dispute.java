@@ -1,115 +1,104 @@
 package com.IndiExport.backend.entity;
 
 import jakarta.persistence.*;
+import com.IndiExport.backend.entity.Role.RoleType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-/**
- * Dispute entity for handling order disputes between buyer and seller.
- * Tracks dispute status, resolution, and whether seller's payouts are frozen.
- * Payout frozen if payout_frozen = TRUE (prevents seller receiving payments during active dispute).
- */
 @Entity
 @Table(name = "disputes", indexes = {
-        @Index(name = "idx_disputes_order_id", columnList = "order_id"),
+        @Index(name = "idx_disputes_order_id", columnList = "order_id", unique = true),
+        @Index(name = "idx_disputes_buyer_id", columnList = "buyer_id"),
+        @Index(name = "idx_disputes_seller_id", columnList = "seller_id"),
         @Index(name = "idx_disputes_status", columnList = "status"),
-        @Index(name = "idx_disputes_payout_frozen", columnList = "payout_frozen"),
         @Index(name = "idx_disputes_created_at", columnList = "created_at")
 })
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Dispute {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false, unique = true)
     private Order order;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "raised_by_id", nullable = false)
-    private User raisedBy;
+    @Column(name = "buyer_id", nullable = false)
+    private UUID buyerId;
+
+    @Column(name = "seller_id", nullable = false)
+    private UUID sellerId;
+
+    @Column(name = "raised_by_user_id", nullable = false)
+    private UUID raisedByUserId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private RoleType raisedByRole; // BUYER or SELLER
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private DisputeReason reason;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private DisputeStatus status = DisputeStatus.OPEN;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    @Builder.Default
-    private DisputeReason reason = DisputeReason.PENDING;
+    /* ── Resolution ── */
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String description;
+    @Column
+    private Instant resolvedAt;
 
-    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
-    @Builder.Default
-    private Boolean payoutFrozen = true; // Seller cannot receive payments if TRUE
-
-    @Column(columnDefinition = "TEXT")
-    private String adminResolutionNotes;
+    @Column
+    private UUID resolvedByAdminId;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private ResolutionOutcome resolutionOutcome; // 'BUYER_FAVOR', 'SELLER_FAVOR', 'PARTIAL', 'REJECTED'
+    private DisputeResolutionAction resolutionAction;
 
-    @Column(precision = 15, scale = 2)
-    private java.math.BigDecimal refundAmount; // Amount refunded if dispute resolved
+    @Column(columnDefinition = "TEXT")
+    private String resolutionNotes;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column
+    private Long partialRefundAmountMinor; // Only if PARTIAL_REFUND
+
+    /* ── Timestamps ── */
+
+    @Column(nullable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Instant createdAt = Instant.now();
 
-    @Column(columnDefinition = "TIMESTAMP")
-    private LocalDateTime resolvedAt;
+    @Column(nullable = false)
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resolved_by_id")
-    private User resolvedBy;
+    /* ── Relationships ── */
 
-    public enum DisputeStatus {
-        OPEN,       // Dispute raised, awaiting admin review
-        INVESTIGATING,
-        RESOLVED,   // Dispute closed
-        ESCALATED   // Escalated to higher authority
-    }
-
-    public enum DisputeReason {
-        PENDING,                   // Placeholder
-        QUALITY_MISMATCH,         // Product quality doesn't match description
-        PARTIAL_DELIVERY,         // Received partial items
-        DAMAGED_GOODS,            // Items arrived damaged
-        WRONG_ITEM_SHIPPED,       // Wrong product shipped
-        DELIVERY_DELAY,           // Delivery delayed
-        NON_DELIVERY,             // Items not delivered
-        PAYMENT_ISSUE             // Payment-related issues
-    }
-
-    public enum ResolutionOutcome {
-        BUYER_FAVOR,   // Refund issued to buyer
-        SELLER_FAVOR,  // Dispute rejected, seller keeps payment
-        PARTIAL,       // Partial refund
-        REJECTED       // Dispute doesn't fall within scope
-    }
+    @OneToMany(mappedBy = "dispute", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<DisputeEvidence> evidence = new ArrayList<>();
 
     @PreUpdate
     protected void onUpdate() {
-        if (status == DisputeStatus.RESOLVED && resolutionOutcome != null) {
-            payoutFrozen = false; // Unfreeze payout once resolved
-        }
+        updatedAt = Instant.now();
     }
 
     public boolean isUnderDispute() {
-        return status != DisputeStatus.RESOLVED && payoutFrozen;
+        return status != DisputeStatus.RESOLVED && status != DisputeStatus.REJECTED;
     }
 }

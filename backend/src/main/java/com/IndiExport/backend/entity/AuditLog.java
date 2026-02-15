@@ -49,7 +49,7 @@ public class AuditLog {
     @Column(length = 50)
     private String ipAddress;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public AuditLog() {}

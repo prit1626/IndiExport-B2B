@@ -67,4 +67,10 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             LocalDateTime startDate,
             LocalDateTime endDate
     );
+
+    /**
+     * Check if a buyer has purchased a specific product in a completed/delivered order.
+     * Used for Verified Purchase badge.
+     */
+    boolean existsByBuyerIdAndStatusAndItems_Product_Id(UUID buyerId, Order.OrderStatus status, UUID productId);
 }

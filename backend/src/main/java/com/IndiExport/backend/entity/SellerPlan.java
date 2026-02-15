@@ -36,7 +36,7 @@ public class SellerPlan {
     @Column(precision = 15, scale = 2)
     private java.math.BigDecimal maxMonthlyRevenue; // NULL if unlimited
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime activeSince = LocalDateTime.now();
 
     @Column(columnDefinition = "TIMESTAMP")
@@ -45,10 +45,10 @@ public class SellerPlan {
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean isActive = true;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public SellerPlan() {}

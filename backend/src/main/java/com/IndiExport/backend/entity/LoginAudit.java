@@ -58,7 +58,7 @@ public class LoginAudit {
     private String city; // Geo-location (from IP)
 
     // Timestamp
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 

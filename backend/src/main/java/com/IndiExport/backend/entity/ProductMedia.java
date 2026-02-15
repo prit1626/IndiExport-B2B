@@ -34,7 +34,7 @@ public class ProductMedia {
     @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer displayOrder = 0;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime uploadedAt = LocalDateTime.now();
 
     @ManyToOne(fetch = FetchType.LAZY)

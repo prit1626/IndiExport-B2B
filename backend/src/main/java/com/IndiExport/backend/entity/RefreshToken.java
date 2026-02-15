@@ -57,7 +57,7 @@ public class RefreshToken {
     private String userAgent; // Browser/Client user agent string
 
     // Audit
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 

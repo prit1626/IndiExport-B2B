@@ -25,7 +25,7 @@ public class RfqMedia {
     @Column(length = 20)
     private String mediaType = "IMAGE";
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
     public RfqMedia() {}

@@ -8,6 +8,9 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import com.IndiExport.backend.exception.ReviewExceptions;
+import com.IndiExport.backend.exception.DisputeExceptions;
+import com.IndiExport.backend.exception.AdminExceptions;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -100,6 +103,115 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(ChatAccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleChatAccessDeniedException(
+            ChatAccessDeniedException ex, HttpServletRequest request) {
+
+        ApiErrorResponse response = ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("FORBIDDEN")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    // --- Review Exception Handlers ---
+
+    @ExceptionHandler(ReviewExceptions.ReviewNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleReviewNotFound(ReviewExceptions.ReviewNotFoundException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.NOT_FOUND, request);
+    }
+
+    @ExceptionHandler(ReviewExceptions.ReviewAccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleReviewAccessDenied(ReviewExceptions.ReviewAccessDeniedException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.FORBIDDEN, request);
+    }
+
+    @ExceptionHandler({
+            ReviewExceptions.ReviewAlreadyExistsException.class,
+            ReviewExceptions.ReviewReportAlreadyExistsException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleReviewConflicts(RuntimeException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.CONFLICT, request);
+    }
+
+    @ExceptionHandler({
+            ReviewExceptions.VerifiedPurchaseRequiredException.class,
+            ReviewExceptions.InvalidRatingException.class,
+            ReviewExceptions.ReviewModerationException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleReviewBadRequest(RuntimeException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.BAD_REQUEST, request);
+    }
+
+    // --- Dispute Exception Handlers ---
+
+    @ExceptionHandler(DisputeExceptions.DisputeNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleDisputeNotFound(DisputeExceptions.DisputeNotFoundException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.NOT_FOUND, request);
+    }
+
+    @ExceptionHandler(DisputeExceptions.DisputeAccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleDisputeAccessDenied(DisputeExceptions.DisputeAccessDeniedException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.FORBIDDEN, request);
+    }
+
+    // --- Admin & Terms Exception Handlers ---
+
+    @ExceptionHandler({
+            AdminExceptions.SettingsNotFoundException.class,
+            AdminExceptions.TermsNotFoundException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleAdminNotFound(RuntimeException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.NOT_FOUND, request);
+    }
+
+    @ExceptionHandler(AdminExceptions.TermsAlreadyPublishedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAdminConflict(RuntimeException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.CONFLICT, request);
+    }
+
+    @ExceptionHandler(DisputeExceptions.DisputeAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleDisputeConflict(DisputeExceptions.DisputeAlreadyExistsException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.CONFLICT, request);
+    }
+
+    @ExceptionHandler({
+            DisputeExceptions.DisputeNotAllowedException.class,
+            DisputeExceptions.DisputeResolutionException.class,
+            DisputeExceptions.EvidenceUploadNotAllowedException.class,
+            DisputeExceptions.InvalidRefundAmountException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleDisputeBadRequest(RuntimeException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.BAD_REQUEST, request);
+    }
+
+    // --- Analytics Exception Handlers ---
+
+    @ExceptionHandler(InvalidDateRangeException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidDateRange(InvalidDateRangeException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(AnalyticsAccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAnalyticsAccessDenied(AnalyticsAccessDeniedException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.FORBIDDEN, request);
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildErrorResponse(RuntimeException ex, HttpStatus status, HttpServletRequest request) {
+        ApiErrorResponse response = ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(status.value())
+                .error(status.name())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(response, status);
     }
 
     /**

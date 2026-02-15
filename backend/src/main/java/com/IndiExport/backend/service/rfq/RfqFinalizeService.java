@@ -23,6 +23,10 @@ public class RfqFinalizeService {
     private final InvoiceService invoiceService;
     private final InvoiceRepository invoiceRepository;
     private final com.IndiExport.backend.repository.ProductRepository productRepository;
+    private final com.IndiExport.backend.service.currency.CurrencyConversionService currencyConversionService;
+    private final com.IndiExport.backend.repository.OrderCurrencySnapshotRepository currencySnapshotRepository;
+
+    private static final java.util.concurrent.atomic.AtomicInteger ORDER_SEQ = new java.util.concurrent.atomic.AtomicInteger(5000);
 
     @Transactional
     public RfqFinalizeResponse finalizeRfq(UUID buyerId, UUID rfqId, UUID quoteId) {
@@ -115,16 +119,18 @@ public class RfqFinalizeService {
          
          // Create Order
          Order order = new Order();
+         // BUG FIX: Order number must be generated
+         order.setOrderNumber("RFQ-" + System.currentTimeMillis() + "-" + ORDER_SEQ.getAndIncrement());
          order.setBuyer(rfq.getBuyer());
          order.setSeller(quote.getSeller());
          order.setRfq(rfq);
          order.setStatus(Order.OrderStatus.PENDING_CONFIRMATION);
          order.setTotalAmountPaise(totalOrderValue);
-         order.setShippingMode(rfq.getShippingMode());
+         order.setCurrencyCode("INR"); // Defaulting to INR for snapshot basis
          order.setBuyerCountry(rfq.getDestinationCountry());
          order.setShippingAddress(rfq.getDestinationAddressJson() != null ? rfq.getDestinationAddressJson() : "Address from RFQ");
          order.setEstimatedDeliveryDate(java.time.LocalDate.now().plusDays(quote.getLeadTimeDays() != null ? quote.getLeadTimeDays() : 7));
-         order.setItems(new ArrayList<>()); // Initialize list
+         order.setItems(new ArrayList<>()); 
          
          // Create Order Item
          OrderItem item = new OrderItem();
@@ -137,27 +143,45 @@ public class RfqFinalizeService {
          item.setLineTotalPaise(quote.getQuotedPriceInrPaise() * rfq.getQuantity());
          
          order.getItems().add(item);
-          
          order = orderRepository.save(order);
 
-          // Create Shipping Snapshot from Quote
-          if (quote.getShippingEstimateInrPaise() != null) {
-              ShippingQuote shippingQuote = new ShippingQuote();
-              shippingQuote.setOrder(order);
-              shippingQuote.setMode(rfq.getShippingMode());
-              shippingQuote.setDestinationCountry(rfq.getDestinationCountry());
-              shippingQuote.setTotalWeightGrams(0);
-              shippingQuote.setChargeableWeightGrams(0);
-              shippingQuote.setShippingCostPaise(quote.getShippingEstimateInrPaise());
-              shippingQuote.setEstimatedDeliveryDaysMin(quote.getLeadTimeDays());
-              shippingQuote.setEstimatedDeliveryDaysMax(quote.getLeadTimeDays());
-              shippingQuote.setQuoteSource("RFQ_NEGOTIATION");
-              
-              // Bidirectional set and save
-              order.setShippingQuote(shippingQuote);
-              orderRepository.save(order);
-          }
-          
-          return order;
+         // Lock Exchange Rate & Create Currency Snapshot
+         String targetCurrency = rfq.getTargetCurrency() != null ? rfq.getTargetCurrency() : "USD";
+         com.IndiExport.backend.service.currency.CurrencyConversionService.ConversionResult convResult = 
+                 currencyConversionService.convertFromINR(totalOrderValue, targetCurrency);
+
+         OrderCurrencySnapshot snapshot = new OrderCurrencySnapshot();
+         snapshot.setOrder(order);
+         snapshot.setBaseCurrency("INR");
+         snapshot.setBuyerCurrency(convResult.targetCurrency());
+         snapshot.setExchangeRateMicros(convResult.exchangeRateMicros());
+         snapshot.setRateTimestamp(convResult.rateTimestamp());
+         snapshot.setProviderName(convResult.providerName());
+         snapshot.setBaseTotalPaise(totalOrderValue);
+         snapshot.setConvertedTotalMinor(convResult.convertedAmountMinor());
+         snapshot.setCreatedAt(Instant.now());
+         
+         currencySnapshotRepository.save(snapshot);
+         order.setCurrencySnapshot(snapshot);
+         order.setCurrencyCode(convResult.targetCurrency());
+         
+         // Create Shipping Snapshot from Quote
+         if (quote.getShippingEstimateInrPaise() != null) {
+             ShippingQuote shippingQuote = new ShippingQuote();
+             shippingQuote.setOrder(order);
+             shippingQuote.setMode(rfq.getShippingMode());
+             shippingQuote.setDestinationCountry(rfq.getDestinationCountry());
+             shippingQuote.setTotalWeightGrams(0);
+             shippingQuote.setChargeableWeightGrams(0);
+             shippingQuote.setShippingCostPaise(quote.getShippingEstimateInrPaise());
+             shippingQuote.setEstimatedDeliveryDaysMin(quote.getLeadTimeDays());
+             shippingQuote.setEstimatedDeliveryDaysMax(quote.getLeadTimeDays());
+             shippingQuote.setQuoteSource("RFQ_NEGOTIATION");
+             
+             // Bidirectional set and save
+             order.setShippingQuote(shippingQuote);
+         }
+         
+         return orderRepository.save(order);
     }
 }

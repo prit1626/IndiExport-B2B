@@ -38,10 +38,10 @@ public class CartItem {
     @Column(nullable = false, length = 20)
     private ShippingMode shippingMode = ShippingMode.SEA;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public CartItem() {}
