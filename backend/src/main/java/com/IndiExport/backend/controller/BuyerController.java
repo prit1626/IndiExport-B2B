@@ -43,6 +43,25 @@ public class BuyerController {
     }
 
     /**
+     * GET /api/v1/buyers/dashboard/analytics
+     * Get buyer dashboard analytics stats
+     * 
+     * @return Analytics data
+     */
+    @GetMapping("/dashboard/analytics")
+    @PreAuthorize("hasRole('BUYER')")
+    public ResponseEntity<Map<String, Object>> getBuyerDashboardAnalytics() {
+        // UUID buyerId = getCurrentUserId(); // In future use to fetch real stats
+        
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("totalOrders", 0);
+        analytics.put("activeShipmentsCount", 0);
+        analytics.put("totalSpending", 0.0);
+        
+        return ResponseEntity.ok(analytics);
+    }
+
+    /**
      * GET /api/v1/buyers/orders
      * Get buyer's orders
      * 
