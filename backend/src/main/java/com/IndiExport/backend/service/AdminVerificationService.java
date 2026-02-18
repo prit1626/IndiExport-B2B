@@ -9,7 +9,11 @@ import com.IndiExport.backend.exception.ResourceNotFoundException;
 import com.IndiExport.backend.repository.AuditLogRepository;
 import com.IndiExport.backend.repository.SellerKycRepository;
 import com.IndiExport.backend.repository.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,9 +26,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdminVerificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminVerificationService.class);
+
     private final SellerKycRepository sellerKycRepository;
     private final UserRepository userRepository;
     private final AuditLogRepository auditLogRepository;
+    private final ObjectMapper objectMapper;
 
     public List<SellerKycDto.AdminSellerKycResponse> getPendingSellers() {
         return sellerKycRepository.findPendingVerifications().stream()
@@ -86,13 +93,28 @@ public class AdminVerificationService {
 
     private void logAudit(User admin, String entityType, UUID entityId, AuditLog.AuditAction action, 
                           String before, String after, String description) {
+        
+        String jsonBefore = null;
+        String jsonAfter = null;
+        
+        try {
+            if (before != null) {
+                jsonBefore = objectMapper.writeValueAsString(java.util.Collections.singletonMap("status", before));
+            }
+            if (after != null) {
+                jsonAfter = objectMapper.writeValueAsString(java.util.Collections.singletonMap("status", after));
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize audit log state", e);
+        }
+
         AuditLog audit = AuditLog.builder()
                 .user(admin)
                 .entityType(entityType)
                 .entityId(entityId)
                 .action(action)
-                .beforeState(before)
-                .afterState(after)
+                .beforeState(jsonBefore)
+                .afterState(jsonAfter)
                 .description(description)
                 .createdAt(LocalDateTime.now())
                 .build();

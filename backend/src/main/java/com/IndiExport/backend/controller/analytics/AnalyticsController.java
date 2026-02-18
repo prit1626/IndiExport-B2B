@@ -31,7 +31,12 @@ public class AnalyticsController {
         if (from == null) from = Instant.now().minus(30, ChronoUnit.DAYS);
         if (to == null) to = Instant.now();
 
-        return ResponseEntity.ok(analyticsService.getBuyerAnalytics(getCurrentUserId(), from, to));
+        try {
+            return ResponseEntity.ok(analyticsService.getBuyerAnalytics(getCurrentUserId(), from, to));
+        } catch (Exception e) {
+            e.printStackTrace(); // Print full stack trace to console
+            throw e;
+        }
     }
 
     @GetMapping("/seller")
@@ -43,7 +48,12 @@ public class AnalyticsController {
         if (from == null) from = Instant.now().minus(30, ChronoUnit.DAYS);
         if (to == null) to = Instant.now();
 
-        return ResponseEntity.ok(analyticsService.getSellerAnalytics(getCurrentUserId(), from, to));
+        try {
+            return ResponseEntity.ok(analyticsService.getSellerAnalytics(getCurrentUserId(), from, to));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     @GetMapping("/seller/advanced")

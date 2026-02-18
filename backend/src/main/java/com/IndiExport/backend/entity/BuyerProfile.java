@@ -133,4 +133,13 @@ public class BuyerProfile {
 
     public User getCreatedBy() { return createdBy; }
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
+
+    // Delegate methods for convenience
+    public String getFullName() {
+        return user != null ? user.getFullName() : "";
+    }
+
+    public String getPhone() {
+        return user != null ? user.getPhoneNumber() : "";
+    }
 }

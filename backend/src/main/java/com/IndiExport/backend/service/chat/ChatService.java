@@ -23,16 +23,72 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatMessageService chatMessageService;
+    private final com.IndiExport.backend.repository.RfqRepository rfqRepository;
+    private final com.IndiExport.backend.repository.SellerProfileRepository sellerProfileRepository;
+
+    @Transactional
+    public java.util.UUID startRfqChat(UUID sellerId, UUID rfqId) {
+        // Check if chat exists
+        RFQ rfq = rfqRepository.findById(rfqId)
+                .orElseThrow(() -> new com.IndiExport.backend.exception.ResourceNotFoundException("RFQ not found"));
+        
+        UUID buyerId = rfq.getBuyer().getId();
+        
+        return chatRepository.findByBuyerIdAndSellerIdAndRfqId(buyerId, sellerId, rfqId)
+                .map(Chat::getId)
+                .orElseGet(() -> {
+                    Chat chat = new Chat();
+                    chat.setChatType(ChatType.RFQ_CHAT);
+                    chat.setRfq(rfq);
+                    chat.setBuyer(rfq.getBuyer());
+                    chat.setSeller(sellerProfileRepository.findById(sellerId).orElseThrow());
+                    chat.setStatus(ChatStatus.ACTIVE);
+                    chat = chatRepository.save(chat);
+
+                    // Create participants
+                    ChatParticipant sellerParticipant = new ChatParticipant();
+                    sellerParticipant.setChat(chat);
+                    sellerParticipant.setUserId(chat.getSeller().getUser().getId());
+                    sellerParticipant.setRole(Role.RoleType.SELLER);
+                    sellerParticipant.setLastReadAt(Instant.now());
+                    chatParticipantRepository.save(sellerParticipant);
+
+                    ChatParticipant buyerParticipant = new ChatParticipant();
+                    buyerParticipant.setChat(chat);
+                    buyerParticipant.setUserId(chat.getBuyer().getUser().getId());
+                    buyerParticipant.setRole(Role.RoleType.BUYER);
+                    // buyer hasn't read yet
+                    chatParticipantRepository.save(buyerParticipant);
+
+                    return chat.getId();
+                });
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ChatListItemResponse> getBuyerRfqChats(UUID buyerId, Pageable pageable) {
+        return chatRepository.findByBuyerIdAndChatType(buyerId, ChatType.RFQ_CHAT, pageable)
+                .map(chat -> mapToListItem(chat, Role.RoleType.BUYER, buyerId));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ChatListItemResponse> getSellerRfqChats(UUID sellerId, Pageable pageable) {
+        return chatRepository.findBySellerIdAndChatType(sellerId, ChatType.RFQ_CHAT, pageable)
+                .map(chat -> mapToListItem(chat, Role.RoleType.SELLER, sellerId));
+    }
 
     @Transactional(readOnly = true)
     public Page<ChatListItemResponse> getBuyerChats(UUID buyerId, Pageable pageable) {
-        return chatRepository.findByBuyerId(buyerId, pageable)
+        // Renaming original to specific Inquiry Fetch if needed, or keep generic for "Inquiries"
+        // The original code used generic findByBuyerId which fetches ALL.
+        // Assuming original intent was "Inquiries", we limit it to match existing controller logic?
+        // Existing controller maps to /buyer/inquiries. If we want ONLY inquiries there:
+        return chatRepository.findByBuyerIdAndChatType(buyerId, ChatType.INQUIRY_CHAT, pageable)
                 .map(chat -> mapToListItem(chat, Role.RoleType.BUYER, buyerId));
     }
 
     @Transactional(readOnly = true)
     public Page<ChatListItemResponse> getSellerChats(UUID sellerId, Pageable pageable) {
-        return chatRepository.findBySellerId(sellerId, pageable)
+         return chatRepository.findBySellerIdAndChatType(sellerId, ChatType.INQUIRY_CHAT, pageable)
                 .map(chat -> mapToListItem(chat, Role.RoleType.SELLER, sellerId));
     }
 
@@ -88,5 +144,13 @@ public class ChatService {
                 .unreadCount(unread)
                 .updatedAt(chat.getUpdatedAt())
                 .build();
+    }
+
+    @Transactional
+    public void markAsRead(UUID chatId, UUID userId) {
+        ChatParticipant participant = chatParticipantRepository.findByChatIdAndUserId(chatId, userId)
+                .orElseThrow(() -> new com.IndiExport.backend.exception.ResourceNotFoundException("Participant not found"));
+        participant.setLastReadAt(Instant.now());
+        chatParticipantRepository.save(participant);
     }
 }

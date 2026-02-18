@@ -37,7 +37,7 @@ const ProductCard = ({ product }) => {
             {/* Image */}
             <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
                 <img
-                    src={product.thumbnailUrl || 'https://via.placeholder.com/400x300?text=No+Image'}
+                    src={product.thumbnail || 'https://via.placeholder.com/400x300?text=No+Image'}
                     alt={product.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
@@ -53,13 +53,13 @@ const ProductCard = ({ product }) => {
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
                         <span className="truncate max-w-[120px]">{product.seller?.companyName}</span>
-                        {product.seller?.iecVerified && (
+                        {product.seller?.verified && (
                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                         )}
                     </div>
                     <div className="flex items-center gap-1 text-xs font-medium text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
                         <Star className="w-3 h-3 fill-current" />
-                        {product.rating?.toFixed(1) || '0.0'} <span className="text-slate-400 font-normal">({product.reviewCount})</span>
+                        {product.averageRating?.toFixed(1) || '0.0'} <span className="text-slate-400 font-normal">({product.totalReviews || 0})</span>
                     </div>
                 </div>
 
@@ -84,19 +84,20 @@ const ProductCard = ({ product }) => {
                 <div className="space-y-1">
                     <div className="flex items-baseline gap-1">
                         <span className="text-lg font-bold text-brand-700">
-                            {formatPrice(product.convertedPriceMinor, product.currency)}
+                            {product.convertedPrice
+                                ? formatPrice(product.convertedPrice.convertedPriceMinor / 100, product.convertedPrice.currency)
+                                : formatINR(product.pricePaise)
+                            }
                         </span>
-                        <span className="text-sm text-slate-500 font-normal">/ unit</span>
+                        <span className="text-sm text-slate-500 font-normal">/ {product.unit}</span>
                     </div>
 
-                    {product.currency !== 'INR' && (
+                    {product.convertedPrice && (
                         <div className="flex items-center justify-between text-xs text-slate-400">
-                            <span>{formatINR(product.basePriceINRPaise)}</span>
-                            {product.exchangeRateUsed && (
-                                <span title={`Rate: ${product.exchangeRateUsed} as of ${new Date(product.rateTimestamp).toLocaleDateString()}`}>
-                                    ~ {product.exchangeRateUsed.toFixed(2)} INR/{product.currency}
-                                </span>
-                            )}
+                            <span>{formatINR(product.pricePaise)}</span>
+                            <span title={`Rate: ${(product.convertedPrice.exchangeRateMicros / 1000000).toFixed(2)}`}>
+                                ~ {(product.convertedPrice.exchangeRateMicros / 1000000).toFixed(2)} INR/{product.convertedPrice.currency}
+                            </span>
                         </div>
                     )}
                 </div>

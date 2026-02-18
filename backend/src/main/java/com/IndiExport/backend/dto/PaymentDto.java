@@ -278,4 +278,74 @@ public class PaymentDto {
         public String getEventId() { return eventId; }
         public void setEventId(String eventId) { this.eventId = eventId; }
     }
+    /* ── Razorpay DTOs ── */
+
+    public static class RazorpayOrderResponse {
+        private UUID orderId;
+        private PaymentProvider provider; // RAZORPAY
+        private RazorpayDetails razorpay;
+
+        public RazorpayOrderResponse() {}
+
+        // Getters and Setters
+        public UUID getOrderId() { return orderId; }
+        public void setOrderId(UUID orderId) { this.orderId = orderId; }
+        public PaymentProvider getProvider() { return provider; }
+        public void setProvider(PaymentProvider provider) { this.provider = provider; }
+        public RazorpayDetails getRazorpay() { return razorpay; }
+        public void setRazorpay(RazorpayDetails razorpay) { this.razorpay = razorpay; }
+    }
+
+    public static class RazorpayDetails {
+        private String key;
+        private String razorpayOrderId;
+        private long amountMinor;
+        private String currency;
+        private String buyerName;
+        private String buyerEmail;
+        private String buyerPhone;
+        private String callbackUrl;
+        private java.util.Map<String, String> notes;
+
+        public RazorpayDetails() {}
+
+        // Getters and Setters
+        public String getKey() { return key; }
+        public void setKey(String key) { this.key = key; }
+        public String getRazorpayOrderId() { return razorpayOrderId; }
+        public void setRazorpayOrderId(String razorpayOrderId) { this.razorpayOrderId = razorpayOrderId; }
+        public long getAmountMinor() { return amountMinor; }
+        public void setAmountMinor(long amountMinor) { this.amountMinor = amountMinor; }
+        public String getCurrency() { return currency; }
+        public void setCurrency(String currency) { this.currency = currency; }
+        public String getBuyerName() { return buyerName; }
+        public void setBuyerName(String buyerName) { this.buyerName = buyerName; }
+        public String getBuyerEmail() { return buyerEmail; }
+        public void setBuyerEmail(String buyerEmail) { this.buyerEmail = buyerEmail; }
+        public String getBuyerPhone() { return buyerPhone; }
+        public void setBuyerPhone(String buyerPhone) { this.buyerPhone = buyerPhone; }
+        public String getCallbackUrl() { return callbackUrl; }
+        public void setCallbackUrl(String callbackUrl) { this.callbackUrl = callbackUrl; }
+        public java.util.Map<String, String> getNotes() { return notes; }
+        public void setNotes(java.util.Map<String, String> notes) { this.notes = notes; }
+    }
+
+    public static class RazorpayVerifyRequest {
+        private UUID platformOrderId;
+        private String razorpayPaymentId;
+        private String razorpayOrderId;
+        private String razorpaySignature;
+
+        public RazorpayVerifyRequest() {}
+
+        // Getters and Setters
+        public UUID getPlatformOrderId() { return platformOrderId; }
+        public void setPlatformOrderId(UUID platformOrderId) { this.platformOrderId = platformOrderId; }
+        public String getRazorpayPaymentId() { return razorpayPaymentId; }
+        public void setRazorpayPaymentId(String razorpayPaymentId) { this.razorpayPaymentId = razorpayPaymentId; }
+        public String getRazorpayOrderId() { return razorpayOrderId; }
+        public void setRazorpayOrderId(String razorpayOrderId) { this.razorpayOrderId = razorpayOrderId; }
+        public String getRazorpaySignature() { return razorpaySignature; }
+        public void setRazorpaySignature(String razorpaySignature) { this.razorpaySignature = razorpaySignature; }
+    }
 }

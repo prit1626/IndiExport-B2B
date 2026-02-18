@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { authApi } from '../../api/authApi';
@@ -13,22 +13,26 @@ const LoginPage = () => {
     const [serverError, setServerError] = useState('');
     const login = useAuthStore((state) => state.login);
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const from = location.state?.from || '/';
 
     const onSubmit = async (data) => {
         setIsLoading(true);
         setServerError('');
 
-        // Use the login action from store which handles token storage
         const success = await login(authApi.login, {
             email: data.email,
             password: data.password
         });
 
         if (success) {
-            // User is updated in store, but we might need to get the role to redirect 
-            // The store updates asynchronously, so we can check the user in store or wait a tick
-            // Ideally login returns the user or we inspect the store state
             const user = useAuthStore.getState().user;
+
+            // If we came from a specific page (like a product page), go back there
+            if (from !== '/') {
+                return navigate(from, { replace: true });
+            }
 
             if (user?.role === 'ADMIN') navigate('/admin/dashboard');
             else if (user?.role === 'SELLER') navigate('/seller/dashboard');

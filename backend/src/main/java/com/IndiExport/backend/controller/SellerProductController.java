@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/seller/products")
+@RequestMapping("/api/v1/sellers/products")
 @RequiredArgsConstructor
 public class SellerProductController {
 
@@ -38,11 +38,8 @@ public class SellerProductController {
         return ResponseEntity.ok(productService.updateProduct(getCurrentUserId(), id, request));
     }
 
-    @GetMapping
-    @PreAuthorize("hasRole('SELLER')")
-    public ResponseEntity<List<ProductDto.ProductResponse>> getMyProducts() {
-        return ResponseEntity.ok(productService.getSellerProducts(getCurrentUserId()));
-    }
+    // LIST endpoint is handled by SellerController.getSellerProducts to support pagination
+    // Removed duplicate getMyProducts method
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('SELLER')")

@@ -5,5 +5,6 @@ package com.IndiExport.backend.entity;
  */
 public enum PaymentProvider {
     STRIPE,      // International buyer payments
+    RAZORPAY,    // Indian buyer payments
     RAZORPAYX    // Indian seller payouts
 }

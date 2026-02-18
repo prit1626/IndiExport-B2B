@@ -19,4 +19,8 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
     Page<Chat> findByBuyerId(UUID buyerId, Pageable pageable);
 
     Page<Chat> findBySellerId(UUID sellerId, Pageable pageable);
+
+    Page<Chat> findByBuyerIdAndChatType(UUID buyerId, com.IndiExport.backend.entity.ChatType chatType, Pageable pageable);
+
+    Page<Chat> findBySellerIdAndChatType(UUID sellerId, com.IndiExport.backend.entity.ChatType chatType, Pageable pageable);
 }

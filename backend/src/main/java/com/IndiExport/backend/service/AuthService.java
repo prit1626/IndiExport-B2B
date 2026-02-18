@@ -389,7 +389,7 @@ public class AuthService {
     private LoginResponse.UserInfo buildLoginUserInfo(User user) {
         String role = user.getRoles().stream()
                 .map(r -> r.getName().toString())
-                .collect(Collectors.joining());
+                .collect(Collectors.joining(","));
 
         String sellerPlanType = null;
         String iecVerificationStatus = null;

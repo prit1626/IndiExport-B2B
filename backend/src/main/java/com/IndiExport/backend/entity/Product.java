@@ -251,4 +251,13 @@ public class Product {
 
     public List<ProductMedia> getMedia() { return media; }
     public void setMedia(List<ProductMedia> media) { this.media = media; }
+
+    // Helper methods
+    public String getThumbnailUrl() {
+        return (media != null && !media.isEmpty()) ? media.get(0).getMediaUrl() : null;
+    }
+
+    public String getUnit() {
+        return quantityUnit;
+    }
 }

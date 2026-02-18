@@ -12,6 +12,7 @@ package com.IndiExport.backend.entity;
  */
 public enum PaymentStatus {
     CREATED,
+    PAID,
     CAPTURED,
     HOLDING,
     RELEASED,

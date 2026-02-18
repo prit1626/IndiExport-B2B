@@ -66,6 +66,12 @@ public class Order {
     @Column(length = 20)
     private ShippingMode shippingMode;
 
+    @Column(length = 50)
+    private String shippingCourier;
+
+    @Column(length = 50)
+    private String trackingNumber;
+
     @Column(nullable = false, length = 3)
     private String currencyCode = "INR";
 
@@ -161,6 +167,12 @@ public class Order {
 
     public ShippingMode getShippingMode() { return shippingMode; }
     public void setShippingMode(ShippingMode shippingMode) { this.shippingMode = shippingMode; }
+
+    public String getShippingCourier() { return shippingCourier; }
+    public void setShippingCourier(String shippingCourier) { this.shippingCourier = shippingCourier; }
+
+    public String getTrackingNumber() { return trackingNumber; }
+    public void setTrackingNumber(String trackingNumber) { this.trackingNumber = trackingNumber; }
 
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }

@@ -79,10 +79,10 @@ public class AnalyticsRepository {
         );
 
         return BuyerDashboardAnalyticsResponse.builder()
-                .totalOrders((Long) stats.get("total_orders"))
-                .activeShipmentsCount((Long) stats.get("active_shipments"))
-                .completedOrders((Long) stats.get("completed_orders"))
-                .totalSpendingINRPaise((Long) stats.get("total_spending"))
+                .totalOrders(((Number) stats.get("total_orders")).longValue())
+                .activeShipmentsCount(((Number) stats.get("active_shipments")).longValue())
+                .completedOrders(((Number) stats.get("completed_orders")).longValue())
+                .totalSpendingINRPaise(((Number) stats.get("total_spending")).longValue())
                 .totalSpendingBuyerCurrencyMinor(totalSpendingMinor)
                 .buyerCurrencyCode(buyerCurrencyCode)
                 .lastOrdersSummary(lastOrders)
@@ -120,13 +120,13 @@ public class AnalyticsRepository {
         Map<String, Object> payoutStats = jdbcTemplate.queryForMap(payoutSql, sellerId, Timestamp.from(from), Timestamp.from(to));
 
         return SellerDashboardAnalyticsResponse.builder()
-                .totalSalesCount((Long) stats.get("total_sales"))
-                .totalRevenueINRPaise((Long) stats.get("total_revenue"))
-                .pendingOrdersCount((Long) stats.get("pending_orders"))
-                .shippedOrdersCount((Long) stats.get("shipped_orders"))
-                .deliveredOrdersCount((Long) stats.get("delivered_orders"))
-                .payoutHoldingCount((Long) payoutStats.get("holding"))
-                .payoutReleasedCount((Long) payoutStats.get("released"))
+                .totalSalesCount(((Number) stats.get("total_sales")).longValue())
+                .totalRevenueINRPaise(((Number) stats.get("total_revenue")).longValue())
+                .pendingOrdersCount(((Number) stats.get("pending_orders")).longValue())
+                .shippedOrdersCount(((Number) stats.get("shipped_orders")).longValue())
+                .deliveredOrdersCount(((Number) stats.get("delivered_orders")).longValue())
+                .payoutHoldingCount(((Number) payoutStats.get("holding")).longValue())
+                .payoutReleasedCount(((Number) payoutStats.get("released")).longValue())
                 .build();
     }
 
@@ -179,13 +179,14 @@ public class AnalyticsRepository {
                 Timestamp.from(from), Timestamp.from(to)
         );
 
+        long gmv = ((Number) orderStats.get("gmv")).longValue();
         return AdminDashboardAnalyticsResponse.builder()
-                .platformOrdersCount((Long) orderStats.get("total_orders"))
-                .platformGMVINRPaise((Long) orderStats.get("gmv"))
-                .platformCommissionINRPaise((Long) orderStats.get("gmv") / 10) // 10% flat assumption for now
+                .platformOrdersCount(((Number) orderStats.get("total_orders")).longValue())
+                .platformGMVINRPaise(gmv)
+                .platformCommissionINRPaise(gmv / 10) // 10% flat assumption for now
                 .disputesOpenCount(disputesOpen != null ? disputesOpen : 0)
-                .newSellersCount((Long) userStats.get("new_sellers"))
-                .newBuyersCount((Long) userStats.get("new_buyers"))
+                .newSellersCount(((Number) userStats.get("new_sellers")).longValue())
+                .newBuyersCount(((Number) userStats.get("new_buyers")).longValue())
                 .topCountriesByOrders(topCountries)
                 .build();
     }

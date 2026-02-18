@@ -83,8 +83,8 @@ const ProductListingPage = () => {
             try {
                 // filters object is already derived from URL
                 const response = await productApi.getProducts(filters);
-                setProducts(response.data.items || []);
-                setTotalItems(response.data.totalItems);
+                setProducts(response.data.content || []);
+                setTotalItems(response.data.totalElements);
                 setTotalPages(response.data.totalPages);
             } catch (err) {
                 if (err.name !== 'CanceledError') {

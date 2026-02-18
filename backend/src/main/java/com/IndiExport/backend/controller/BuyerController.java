@@ -16,7 +16,7 @@ import java.util.*;
  * All endpoints require valid JWT access token with BUYER role
  */
 @RestController
-@RequestMapping("/api/v1/buyers")
+@RequestMapping("/api/v1/buyer")
 @RequiredArgsConstructor
 public class BuyerController {
 
@@ -61,6 +61,8 @@ public class BuyerController {
         return ResponseEntity.ok(analytics);
     }
 
+    private final com.IndiExport.backend.service.OrderService orderService;
+
     /**
      * GET /api/v1/buyers/orders
      * Get buyer's orders
@@ -71,15 +73,34 @@ public class BuyerController {
     @GetMapping("/orders")
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<Map<String, Object>> getBuyerOrders(
-            @RequestParam(defaultValue = "0") int page) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sort) {
         UUID buyerId = getCurrentUserId();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("page", page);
-        response.put("totalOrders", 0);
-        response.put("orders", new ArrayList<>());
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(orderService.getBuyerOrders(buyerId, page, size, status, sort));
+    }
+
+    /**
+     * GET /api/v1/buyers/orders/{id}
+     * Get single order details
+     */
+    @GetMapping("/orders/{id}")
+    @PreAuthorize("hasRole('BUYER')")
+    public ResponseEntity<Map<String, Object>> getBuyerOrderDetails(@PathVariable UUID id) {
+        UUID buyerId = getCurrentUserId();
+        return ResponseEntity.ok(orderService.getBuyerOrderDetails(buyerId, id));
+    }
+
+    /**
+     * GET /api/v1/buyers/orders/{id}/tracking
+     * Get order tracking info
+     */
+    @GetMapping("/orders/{id}/tracking")
+    @PreAuthorize("hasRole('BUYER')")
+    public ResponseEntity<Map<String, Object>> getBuyerOrderTracking(@PathVariable UUID id) {
+        UUID buyerId = getCurrentUserId();
+        return ResponseEntity.ok(orderService.getBuyerOrderTracking(buyerId, id));
     }
 
     /**

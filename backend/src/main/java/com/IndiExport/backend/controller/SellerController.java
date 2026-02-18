@@ -18,7 +18,29 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/v1/sellers")
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class SellerController {
+
+    /**
+     * GET /api/v1/sellers/dashboard
+     * Get seller dashboard with metrics
+     * Only accessible to SELLER role
+     * 
+     * @return Dashboard data with products, revenue, orders
+     */
+    private final com.IndiExport.backend.service.ProductService productService;
+    private final com.IndiExport.backend.service.OrderService orderService;
+    private final com.IndiExport.backend.repository.UserRepository userRepository;
+
+    private UUID getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Object details = auth.getDetails();
+        if (details instanceof JwtAuthenticationFilter.JwtAuthenticationDetails) {
+            return UUID.fromString(((JwtAuthenticationFilter.JwtAuthenticationDetails) details).getUserId());
+        }
+        // Fallback or legacy (should be covered by filter)
+         return userRepository.findByEmail(auth.getName()).orElseThrow().getId();
+    }
 
     /**
      * GET /api/v1/sellers/dashboard
@@ -54,13 +76,26 @@ public class SellerController {
     @GetMapping("/products")
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<Map<String, Object>> getSellerProducts(
-            @RequestParam(defaultValue = "0") int page) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status) {
+        
         UUID sellerId = getCurrentUserId();
+        log.info("API Request: getSellerProducts. User: {}, Page: {}, Status: {}", sellerId, page, status);
+        
+        org.springframework.data.domain.Page<com.IndiExport.backend.dto.ProductDto.ProductResponse> productPage = 
+            productService.getSellerProducts(sellerId, page, size, keyword, status);
+        
+        log.info("API Response: getSellerProducts. Items found: {}", productPage.getTotalElements());
         
         Map<String, Object> response = new HashMap<>();
-        response.put("page", page);
-        response.put("totalProducts", 0);
-        response.put("products", new ArrayList<>());
+        response.put("content", productPage.getContent());
+        response.put("page", productPage.getNumber());
+        response.put("size", productPage.getSize());
+        response.put("totalElements", productPage.getTotalElements());
+        response.put("totalPages", productPage.getTotalPages());
+        response.put("last", productPage.isLast());
         
         return ResponseEntity.ok(response);
     }
@@ -75,15 +110,24 @@ public class SellerController {
     @GetMapping("/orders")
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<Map<String, Object>> getSellerOrders(
-            @RequestParam(defaultValue = "0") int page) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sort) {
+        
         UUID sellerId = getCurrentUserId();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("page", page);
-        response.put("totalOrders", 0);
-        response.put("orders", new ArrayList<>());
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(orderService.getSellerOrders(sellerId, page, size, status, sort));
+    }
+
+    /**
+     * GET /api/v1/sellers/orders/{orderId}
+     * Get seller order details
+     */
+    @GetMapping("/orders/{orderId}")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<Map<String, Object>> getSellerOrderDetails(@PathVariable UUID orderId) {
+        UUID sellerId = getCurrentUserId();
+        return ResponseEntity.ok(orderService.getSellerOrderDetails(sellerId, orderId));
     }
 
     /**
@@ -130,18 +174,5 @@ public class SellerController {
         return ResponseEntity.ok(kycStatus);
     }
 
-    /**
-     * Extract userId from Spring Security Authentication
-     * Used internally to identify the current authenticated seller
-     * 
-     * @return UUID of authenticated seller
-     */
-    private UUID getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Object details = auth.getDetails();
-        if (details instanceof JwtAuthenticationFilter.JwtAuthenticationDetails) {
-            return UUID.fromString(((JwtAuthenticationFilter.JwtAuthenticationDetails) details).getUserId());
-        }
-        throw new IllegalStateException("User not authenticated");
-    }
+
 }

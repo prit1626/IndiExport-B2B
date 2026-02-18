@@ -43,6 +43,11 @@ public class SellerProfileController {
         return ResponseEntity.ok(Collections.singletonMap("logoUrl", url));
     }
 
+    @GetMapping("/public/{id}")
+    public ResponseEntity<SellerProfileDto.SellerProfileResponse> getPublicProfile(@PathVariable UUID id) {
+        return ResponseEntity.ok(sellerProfileService.getPublicProfile(id));
+    }
+
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Object details = auth.getDetails();

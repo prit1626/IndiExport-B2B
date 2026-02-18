@@ -66,15 +66,20 @@ const useAuthStore = create((set, get) => ({
         }
 
         try {
-            // getMeFn should be the API call to /auth/me
-            // If 401, axios interceptor handles refresh. If refresh fails, it throws.
             const response = await getMeFn();
             set({ user: response.data, isAuthenticated: true, isBootstrapping: false });
         } catch (error) {
-            // If we reach here, it implies refresh failed or other network error
-            // We should treat as not authenticated
             get().logout();
             set({ isBootstrapping: false, isAuthenticated: false });
+        }
+    },
+
+    refreshUser: async (getMeFn) => {
+        try {
+            const response = await getMeFn();
+            set({ user: response.data, isAuthenticated: true });
+        } catch (error) {
+            console.error("Failed to refresh user:", error);
         }
     }
 }));

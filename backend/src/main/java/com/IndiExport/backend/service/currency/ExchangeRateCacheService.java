@@ -27,16 +27,16 @@ public class ExchangeRateCacheService {
     private static final Logger log = LoggerFactory.getLogger(ExchangeRateCacheService.class);
 
     private final FrankfurterExchangeRateClient exchangeRateClient;
-    private final long ttlHours;
+    private final long ttlMinutes;
 
     private final ConcurrentHashMap<String, CachedRate> cache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
 
     public ExchangeRateCacheService(
             FrankfurterExchangeRateClient exchangeRateClient,
-            @Value("${currency.cache.ttl-hours:12}") long ttlHours) {
+            @Value("${currency.cache.ttl-minutes:30}") long ttlMinutes) {
         this.exchangeRateClient = exchangeRateClient;
-        this.ttlHours = ttlHours;
+        this.ttlMinutes = ttlMinutes;
     }
 
     /**
@@ -82,9 +82,9 @@ public class ExchangeRateCacheService {
             } catch (Exception fetchError) {
                 // Fallback: return stale cached rate if available
                 if (cached != null) {
-                    log.warn("API fetch failed for {}, using stale cache (age: {} hours): {}",
+                    log.warn("API fetch failed for {}, using stale cache (age: {} minutes): {}",
                             key,
-                            ChronoUnit.HOURS.between(cached.fetchedAt(), Instant.now()),
+                            ChronoUnit.MINUTES.between(cached.fetchedAt(), Instant.now()),
                             fetchError.getMessage());
                     return cached;
                 }
@@ -97,7 +97,7 @@ public class ExchangeRateCacheService {
     }
 
     private boolean isExpired(CachedRate rate) {
-        return Instant.now().isAfter(rate.fetchedAt().plus(ttlHours, ChronoUnit.HOURS));
+        return Instant.now().isAfter(rate.fetchedAt().plus(ttlMinutes, ChronoUnit.MINUTES));
     }
 
     /**

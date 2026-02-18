@@ -56,6 +56,49 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getSellerChats(seller.getId(), pageable));
     }
 
+    // === RFQ CHAT ENDPOINTS ===
+
+    @PostMapping("/seller/rfq/{rfqId}/chat/start")
+    public ResponseEntity<java.util.Map<String, UUID>> startRfqChat(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID rfqId) {
+        
+        User user = getUser(userDetails);
+        SellerProfile seller = sellerProfileRepository.findByUserId(user.getId()).orElseThrow();
+        UUID chatId = chatService.startRfqChat(seller.getId(), rfqId);
+        return ResponseEntity.ok(java.util.Collections.singletonMap("chatId", chatId));
+    }
+
+    @GetMapping("/seller/rfq-chats")
+    public ResponseEntity<Page<ChatListItemResponse>> getSellerRfqChats(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PageableDefault(sort = "updatedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+        
+        User user = getUser(userDetails);
+        SellerProfile seller = sellerProfileRepository.findByUserId(user.getId()).orElseThrow();
+        return ResponseEntity.ok(chatService.getSellerRfqChats(seller.getId(), pageable));
+    }
+
+    @GetMapping("/buyer/rfq-chats")
+    public ResponseEntity<Page<ChatListItemResponse>> getBuyerRfqChats(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PageableDefault(sort = "updatedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+        
+        User user = getUser(userDetails);
+        BuyerProfile buyer = buyerProfileRepository.findByUserId(user.getId()).orElseThrow();
+        return ResponseEntity.ok(chatService.getBuyerRfqChats(buyer.getId(), pageable));
+    }
+
+    // === SHARED ===
+
+    @PostMapping("/rfq-chat/{chatId}/message")
+    public ResponseEntity<MessageResponse> sendRfqMessage(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID chatId,
+            @RequestBody SendMessageRequest request) {
+        return sendMessage(userDetails, chatId, request); // Reuse existing logic
+    }
+
     @PostMapping("/chat/{chatId}/message")
     public ResponseEntity<MessageResponse> sendMessage(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -77,6 +120,16 @@ public class ChatController {
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, response);
         
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/chat/{chatId}/read")
+    public ResponseEntity<Void> markAsRead(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID chatId) {
+        
+        User user = getUser(userDetails);
+        chatService.markAsRead(chatId, user.getId());
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/chat/{chatId}/messages")

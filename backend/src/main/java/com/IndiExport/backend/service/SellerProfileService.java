@@ -3,9 +3,11 @@ package com.IndiExport.backend.service;
 import com.IndiExport.backend.dto.SellerProfileDto;
 import com.IndiExport.backend.entity.Category;
 import com.IndiExport.backend.entity.SellerProfile;
+import com.IndiExport.backend.entity.User;
 import com.IndiExport.backend.exception.ResourceNotFoundException;
 import com.IndiExport.backend.repository.CategoryRepository;
 import com.IndiExport.backend.repository.SellerProfileRepository;
+import com.IndiExport.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,19 +26,31 @@ public class SellerProfileService {
 
     private final SellerProfileRepository sellerProfileRepository;
     private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
 
     public SellerProfileService(SellerProfileRepository sellerProfileRepository,
                                  CategoryRepository categoryRepository,
+                                 UserRepository userRepository,
                                  FileStorageService fileStorageService) {
         this.sellerProfileRepository = sellerProfileRepository;
         this.categoryRepository = categoryRepository;
+        this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
     }
 
+    @Transactional(readOnly = true)
     public SellerProfileDto.SellerProfileResponse getProfile(UUID userId) {
         SellerProfile profile = sellerProfileRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("SellerProfile", userId.toString()));
+        
+        return mapToResponse(profile);
+    }
+
+    @Transactional(readOnly = true)
+    public SellerProfileDto.SellerProfileResponse getPublicProfile(UUID sellerProfileId) {
+        SellerProfile profile = sellerProfileRepository.findById(sellerProfileId)
+                .orElseThrow(() -> new ResourceNotFoundException("SellerProfile", sellerProfileId.toString()));
         
         return mapToResponse(profile);
     }
@@ -54,6 +68,11 @@ public class SellerProfileService {
         profile.setCity(request.getCity());
         profile.setState(request.getState());
         profile.setPostalCode(request.getPostalCode());
+
+        // Update User info if email/name allowed (User.java fields)
+        User user = profile.getUser();
+        // user.setEmail(request.getBusinessEmail()); // Usually email shouldn't change without verification
+        userRepository.save(user);
 
         if (request.getCategoryIds() != null) {
             List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
@@ -95,6 +114,29 @@ public class SellerProfileService {
         response.setActiveProducts(profile.getActiveProducts());
         response.setTotalSalesPaise(profile.getTotalSalesPaise());
         response.setCreatedAt(profile.getCreatedAt());
+
+        // Attach KYC status if available
+        if (profile.getKyc() != null) {
+            response.setIecNumber(profile.getKyc().getIecNumber());
+            response.setIecStatus(profile.getKyc().getVerificationStatus().name());
+            response.setGstin(profile.getKyc().getGstinNumber());
+            response.setPanNumber(profile.getKyc().getPanNumber());
+            response.setVerificationSubmittedAt(profile.getKyc().getSubmittedAt());
+            
+            // Masked account info
+            response.setPayoutMethod(profile.getKyc().getPayoutMethodPreference());
+            response.setAccountHolderName(profile.getKyc().getBankAccountHolderName());
+            response.setAccountNumberMasked(profile.getKyc().getBankAccountNumberMasked());
+            response.setIfscMasked(profile.getKyc().getBankIfscCode() != null ? "****" + profile.getKyc().getBankIfscCode().substring(Math.max(0, profile.getKyc().getBankIfscCode().length() - 4)) : null);
+        }
+
+        // Attach Plan info
+        if (profile.getSellerPlan() != null) {
+            response.setCurrentPlan(profile.getSellerPlan().getPlanType().name());
+        } else {
+            response.setCurrentPlan("BASIC_SELLER"); // Fallback
+        }
+
         return response;
     }
 }

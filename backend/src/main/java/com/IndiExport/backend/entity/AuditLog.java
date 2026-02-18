@@ -1,5 +1,7 @@
 package com.IndiExport.backend.entity;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -37,9 +39,11 @@ public class AuditLog {
     @Column(nullable = false, length = 20)
     private AuditAction action; // CREATE, UPDATE, DELETE, SOFT_DELETE
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private String beforeState; // Previous state (for UPDATE/DELETE)
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB")
     private String afterState; // New state (for CREATE/UPDATE)
 

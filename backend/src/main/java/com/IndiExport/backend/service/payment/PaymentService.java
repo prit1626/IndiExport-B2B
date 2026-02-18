@@ -26,15 +26,18 @@ public class PaymentService {
     private final OrderRepository orderRepository;
     private final BuyerProfileRepository buyerProfileRepository;
     private final StripePaymentProvider stripeProvider;
+    private final RazorpayPaymentProvider razorpayProvider;
 
     public PaymentService(PaymentRepository paymentRepository,
                           OrderRepository orderRepository,
                           BuyerProfileRepository buyerProfileRepository,
-                          StripePaymentProvider stripeProvider) {
+                          StripePaymentProvider stripeProvider,
+                          RazorpayPaymentProvider razorpayProvider) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.buyerProfileRepository = buyerProfileRepository;
         this.stripeProvider = stripeProvider;
+        this.razorpayProvider = razorpayProvider;
     }
 
     /**
@@ -42,7 +45,7 @@ public class PaymentService {
      * Idempotent: if a non-failed payment already exists, returns it.
      */
     @Transactional
-    public PaymentDto.CreatePaymentResponse createPaymentIntent(UUID buyerUserId, UUID orderId) {
+    public PaymentDto.RazorpayOrderResponse createRazorpayOrder(UUID buyerUserId, UUID orderId) {
         // 1. Verify buyer owns the order
         BuyerProfile buyer = buyerProfileRepository.findByUserId(buyerUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("BuyerProfile", buyerUserId.toString()));
@@ -68,14 +71,24 @@ public class PaymentService {
         if (existingPayment.isPresent()) {
             Payment existing = existingPayment.get();
             log.info("Returning existing payment {} for order {}", existing.getId(), orderId);
-            PaymentDto.CreatePaymentResponse response = new PaymentDto.CreatePaymentResponse();
-            response.setPaymentId(existing.getId());
-            response.setProvider(existing.getProvider());
-            response.setProviderPaymentIntentId(existing.getProviderPaymentIntentId());
-            response.setClientSecret(existing.getProviderClientSecret());
-            response.setAmountMinor(existing.getAmountMinor());
-            response.setCurrency(existing.getCurrency());
-            response.setStatus(existing.getStatus());
+            
+            // Reconstruct logic or force new if expired? Assuming return existing.
+            // Simplified for Razorpay:
+            PaymentDto.RazorpayOrderResponse response = new PaymentDto.RazorpayOrderResponse();
+            response.setOrderId(orderId);
+            response.setProvider(PaymentProvider.RAZORPAY);
+
+            PaymentDto.RazorpayDetails details = new PaymentDto.RazorpayDetails();
+            details.setKey(razorpayProvider.getKeyId());
+            details.setRazorpayOrderId(existing.getProviderPaymentIntentId());
+            details.setAmountMinor(existing.getAmountMinor());
+            details.setCurrency(existing.getCurrency());
+            details.setBuyerName(buyer.getFullName());
+            details.setBuyerEmail(buyer.getUser().getEmail());
+            details.setBuyerPhone(buyer.getPhone());
+            // details.setNotes(...) - retrieve from where? Reconstruct or ignore for idempotent check
+            
+            response.setRazorpay(details);
             return response;
         }
 
@@ -94,42 +107,112 @@ public class PaymentService {
             currency = "INR";
         }
 
-        // 5. Create Stripe PaymentIntent
-        Map<String, String> metadata = Map.of(
+        // 5. Create Razorpay Order
+        Map<String, String> notes = Map.of(
                 "orderId", orderId.toString(),
                 "orderNumber", order.getOrderNumber(),
                 "buyerId", buyer.getId().toString()
         );
 
-        Map<String, String> stripeResult = stripeProvider.createPaymentIntent(amountMinor, currency, metadata);
+        com.razorpay.Order razorpayOrder = razorpayProvider.createOrder(amountMinor, currency, notes);
+        String rzpOrderId = razorpayOrder.get("id");
 
         // 6. Persist payment record
         Payment payment = new Payment();
         payment.setOrder(order);
         payment.setBuyerId(buyer.getId());
         payment.setSellerId(order.getSeller().getId());
-        payment.setProvider(PaymentProvider.STRIPE);
-        payment.setProviderPaymentIntentId(stripeResult.get("paymentIntentId"));
-        payment.setProviderClientSecret(stripeResult.get("clientSecret"));
+        payment.setProvider(PaymentProvider.RAZORPAY);
+        payment.setProviderPaymentIntentId(rzpOrderId); // Store Razorpay Order ID here
         payment.setAmountMinor(amountMinor);
         payment.setCurrency(currency);
         payment.setAmountInrPaise(order.getTotalAmountPaise());
         payment.setStatus(PaymentStatus.CREATED);
 
         Payment saved = paymentRepository.save(payment);
-        log.info("Payment {} created for order {} via STRIPE ({}{})",
+        log.info("Payment {} created for order {} via RAZORPAY ({}{})",
                 saved.getId(), orderId, currency, amountMinor);
 
-        PaymentDto.CreatePaymentResponse response = new PaymentDto.CreatePaymentResponse();
-        response.setPaymentId(saved.getId());
-        response.setProvider(PaymentProvider.STRIPE);
-        response.setProviderPaymentIntentId(saved.getProviderPaymentIntentId());
-        response.setClientSecret(saved.getProviderClientSecret());
-        response.setAmountMinor(amountMinor);
-        response.setCurrency(currency);
-        response.setStatus(PaymentStatus.CREATED);
+        // 7. Check for existing payment to return? (Already handled by step 3)
+
+        // 8. Build Response
+        PaymentDto.RazorpayOrderResponse response = new PaymentDto.RazorpayOrderResponse();
+        response.setOrderId(orderId);
+        response.setProvider(PaymentProvider.RAZORPAY);
+
+        PaymentDto.RazorpayDetails details = new PaymentDto.RazorpayDetails();
+        details.setKey(razorpayProvider.getKeyId());
+        details.setRazorpayOrderId(rzpOrderId);
+        details.setAmountMinor(amountMinor);
+        details.setCurrency(currency);
+        details.setBuyerName(buyer.getFullName());
+        details.setBuyerEmail(buyer.getUser().getEmail());
+        details.setBuyerPhone(buyer.getPhone());
+        details.setNotes(notes);
+        
+        response.setRazorpay(details);
         return response;
     }
+
+    /**
+     * Verify Razorpay Payment Signature
+     */
+    @Transactional
+    public void verifyRazorpayPayment(UUID buyerUserId, PaymentDto.RazorpayVerifyRequest request) {
+        // 1. Verify buyer owns the order (via platformOrderId)
+        BuyerProfile buyer = buyerProfileRepository.findByUserId(buyerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("BuyerProfile", buyerUserId.toString()));
+        
+        // We find the Payment by orderId (which implies platformOrderId)
+        Payment payment = paymentRepository.findByOrderId(request.getPlatformOrderId())
+                .orElseThrow(() -> new PaymentNotFoundException(request.getPlatformOrderId().toString()));
+
+        if (!payment.getBuyerId().equals(buyer.getId())) {
+             throw new UnauthorizedPaymentAccessException();
+        }
+
+        // 2. Retrieve Razorpay Order ID from payment record
+        String savedRzpOrderId = payment.getProviderPaymentIntentId();
+        if (!savedRzpOrderId.equals(request.getRazorpayOrderId())) {
+            throw new InvalidPaymentStateException("MISMATCH", "Razorpay Order ID mismatch");
+        }
+
+        // 3. Verify Signature
+        boolean isValid = razorpayProvider.verifySignature(
+                request.getRazorpayOrderId(),
+                request.getRazorpayPaymentId(),
+                request.getRazorpaySignature()
+        );
+
+        if (!isValid) {
+            log.warn("Invalid Razorpay Signature for Order {}", request.getPlatformOrderId());
+            throw new PaymentGatewayException("RAZORPAY", "Invalid Payment Signature");
+        }
+
+        // 4. Update Payment Status
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setProviderPaymentIntentId(request.getRazorpayPaymentId()); // Optionally store pay_id
+        payment.setCapturedAt(Instant.now());
+        paymentRepository.save(payment);
+
+        // 5. Update Order Status
+        Order order = payment.getOrder();
+        order.setStatus(Order.OrderStatus.PAID);
+        // paymentService usually shouldn't update Order directly if there's an OrderStateMachine, 
+        // but for simplicity here we do it or call an event publisher.
+        // Assuming direct update for now as per instructions.
+        orderRepository.save(order);
+        
+        log.info("Order {} marked as PAID via Razorpay", order.getId());
+    }
+
+    // Keep existing createPaymentIntent for legacy or switch completely?
+    // User asked to "Integrate Razorpay", implying switch. 
+    // I will REPLACE the existing createPaymentIntent logic but keep the method signature different if needed 
+    // OR create a new method and let controller call it.
+    // The previous createPaymentIntent returned PaymentDto.CreatePaymentResponse (Stripe specific).
+    // I'll create `createRazorpayOrder` method.
+
 
     /**
      * Get payment status (buyer-facing).

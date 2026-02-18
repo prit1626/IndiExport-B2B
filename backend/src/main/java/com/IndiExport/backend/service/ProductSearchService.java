@@ -124,6 +124,11 @@ public class ProductSearchService {
                 predicates.add(cb.lessThanOrEqualTo(root.get("leadTimeDays"), filter.getMaxLeadTimeDays()));
             }
 
+            // 10. Seller ID filter
+            if (filter.getSellerId() != null) {
+                predicates.add(cb.equal(root.get("seller").get("id"), filter.getSellerId()));
+            }
+
             // Ensure distinct results due to joins
             query.distinct(true);
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -170,6 +175,10 @@ public class ProductSearchService {
                 .unit(product.getQuantityUnit())
                 .thumbnail(thumbnail)
                 .averageRating(product.getAverageRatingMilli() / 1000.0)
+                .totalReviews(product.getTotalReviews())
+                .incoterm(product.getIncoterm())
+                .originCountry(product.getOriginCountry())
+                .leadTimeDays(product.getLeadTimeDays())
                 .seller(ProductDto.SellerBasicInfo.builder()
                         .id(product.getSeller().getId())
                         .companyName(product.getSeller().getCompanyName())

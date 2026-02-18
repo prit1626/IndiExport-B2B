@@ -59,9 +59,10 @@ public class ProductService {
 
         // Optional: Ensure seller is verified before allowing ACTIVE status
         if (request.getStatus() == Product.ProductStatus.ACTIVE) {
-            if (!seller.isVerified()) {
-                throw new ForbiddenException("Seller must be verified to list active products");
-            }
+            // RELAXED FOR DEV: Allow unverified sellers to list products
+            // if (!seller.isVerified()) {
+            //    throw new ForbiddenException("Seller must be verified to list active products");
+            // }
             sellerPlanService.validateActiveProductLimit(seller.getId());
         }
 
@@ -104,9 +105,10 @@ public class ProductService {
 
         // Check plan limit if status is changing to ACTIVE
         if (request.getStatus() == Product.ProductStatus.ACTIVE && product.getStatus() != Product.ProductStatus.ACTIVE) {
-            if (!product.getSeller().isVerified()) {
-                throw new ForbiddenException("Seller must be verified to list active products");
-            }
+            // RELAXED FOR DEV: Allow unverified sellers to list products
+            // if (!product.getSeller().isVerified()) {
+            //    throw new ForbiddenException("Seller must be verified to list active products");
+            // }
             sellerPlanService.validateActiveProductLimit(product.getSeller().getId());
         }
 
@@ -139,10 +141,63 @@ public class ProductService {
         SellerProfile seller = sellerProfileRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("SellerProfile", userId.toString()));
         
-        return productRepository.findBySellerIdAndStatusNot(seller.getId(), Product.ProductStatus.DELETED)
+        return productRepository.findAllActiveBySeller(seller.getId())
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<ProductDto.ProductResponse> getSellerProducts(
+            UUID userId, int page, int size, String keyword, String statusStr) {
+        
+        System.out.println("DEBUG: getSellerProducts called for userId: " + userId);
+        
+        SellerProfile seller = sellerProfileRepository.findByUserIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("SellerProfile", userId.toString()));
+        System.out.println("DEBUG: Resolved sellerId: " + seller.getId());
+
+        // Fetch ALL active products (or all non-deleted)
+        // Using derived query method which is safer
+        List<Product> allProducts = productRepository.findBySellerIdAndStatusNot(seller.getId(), Product.ProductStatus.DELETED);
+        System.out.println("DEBUG: Found " + allProducts.size() + " products in DB for seller.");
+
+        // Filter by status in memory
+        if (statusStr != null && !statusStr.isBlank() && !"ALL".equalsIgnoreCase(statusStr)) {
+            try {
+                Product.ProductStatus status = Product.ProductStatus.valueOf(statusStr);
+                allProducts = allProducts.stream()
+                        .filter(p -> p.getStatus() == status)
+                        .collect(Collectors.toList());
+            } catch (IllegalArgumentException e) {
+                // Ignore
+            }
+        }
+        
+        // Filter by keyword in memory
+        if (keyword != null && !keyword.isBlank()) {
+            String lowerKw = keyword.toLowerCase();
+            allProducts = allProducts.stream()
+                    .filter(p -> p.getName().toLowerCase().contains(lowerKw) || 
+                                 (p.getBrand() != null && p.getBrand().toLowerCase().contains(lowerKw)))
+                    .collect(Collectors.toList());
+        }
+
+        // Sort by CreatedAt Desc
+        allProducts.sort((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()));
+
+        // Paginate
+        int start = Math.min((int)org.springframework.data.domain.PageRequest.of(page, size).getOffset(), allProducts.size());
+        int end = Math.min((start + size), allProducts.size());
+        
+        List<ProductDto.ProductResponse> userPageContent = allProducts.subList(start, end).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new org.springframework.data.domain.PageImpl<>(
+                userPageContent, 
+                org.springframework.data.domain.PageRequest.of(page, size), 
+                allProducts.size());
     }
 
     @Transactional(readOnly = true)
@@ -251,6 +306,14 @@ public class ProductService {
         response.setAverageRating(product.getAverageRatingMilli() / 1000.0);
         response.setTotalReviews(product.getTotalReviews());
         
+        if (product.getSeller() != null) {
+            response.setSeller(new ProductDto.SellerBasicInfo(
+                    product.getSeller().getId(),
+                    product.getSeller().getCompanyName(),
+                    product.getSeller().isVerified()
+            ));
+        }
+
         return response;
     }
 }

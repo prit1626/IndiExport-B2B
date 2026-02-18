@@ -161,6 +161,7 @@ public class ProductDto {
         private double averageRating;
         private int totalReviews;
         private CurrencyDto.ConvertedPriceInfo convertedPrice;
+        private SellerBasicInfo seller;
 
         public ProductResponse() {}
 
@@ -211,6 +212,8 @@ public class ProductDto {
         public void setTotalReviews(int totalReviews) { this.totalReviews = totalReviews; }
         public CurrencyDto.ConvertedPriceInfo getConvertedPrice() { return convertedPrice; }
         public void setConvertedPrice(CurrencyDto.ConvertedPriceInfo convertedPrice) { this.convertedPrice = convertedPrice; }
+        public SellerBasicInfo getSeller() { return seller; }
+        public void setSeller(SellerBasicInfo seller) { this.seller = seller; }
     }
 
     public static class ProductMediaResponse {
@@ -254,6 +257,10 @@ public class ProductDto {
         private String unit;
         private String thumbnail;
         private double averageRating;
+        private int totalReviews;
+        private Incoterm incoterm;
+        private String originCountry;
+        private int leadTimeDays;
         private SellerBasicInfo seller;
         private CurrencyDto.ConvertedPriceInfo convertedPrice;
 
@@ -272,6 +279,10 @@ public class ProductDto {
             public BuyerProductCardResponseBuilder unit(String unit) { response.setUnit(unit); return this; }
             public BuyerProductCardResponseBuilder thumbnail(String thumbnail) { response.setThumbnail(thumbnail); return this; }
             public BuyerProductCardResponseBuilder averageRating(double averageRating) { response.setAverageRating(averageRating); return this; }
+            public BuyerProductCardResponseBuilder totalReviews(int totalReviews) { response.setTotalReviews(totalReviews); return this; }
+            public BuyerProductCardResponseBuilder incoterm(Incoterm incoterm) { response.setIncoterm(incoterm); return this; }
+            public BuyerProductCardResponseBuilder originCountry(String originCountry) { response.setOriginCountry(originCountry); return this; }
+            public BuyerProductCardResponseBuilder leadTimeDays(int leadTimeDays) { response.setLeadTimeDays(leadTimeDays); return this; }
             public BuyerProductCardResponseBuilder seller(SellerBasicInfo seller) { response.setSeller(seller); return this; }
             public BuyerProductCardResponseBuilder convertedPrice(CurrencyDto.ConvertedPriceInfo convertedPrice) { response.setConvertedPrice(convertedPrice); return this; }
             public BuyerProductCardResponse build() { return response; }
@@ -292,6 +303,14 @@ public class ProductDto {
         public void setThumbnail(String thumbnail) { this.thumbnail = thumbnail; }
         public double getAverageRating() { return averageRating; }
         public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
+        public int getTotalReviews() { return totalReviews; }
+        public void setTotalReviews(int totalReviews) { this.totalReviews = totalReviews; }
+        public Incoterm getIncoterm() { return incoterm; }
+        public void setIncoterm(Incoterm incoterm) { this.incoterm = incoterm; }
+        public String getOriginCountry() { return originCountry; }
+        public void setOriginCountry(String originCountry) { this.originCountry = originCountry; }
+        public int getLeadTimeDays() { return leadTimeDays; }
+        public void setLeadTimeDays(int leadTimeDays) { this.leadTimeDays = leadTimeDays; }
         public SellerBasicInfo getSeller() { return seller; }
         public void setSeller(SellerBasicInfo seller) { this.seller = seller; }
         public CurrencyDto.ConvertedPriceInfo getConvertedPrice() { return convertedPrice; }
@@ -335,6 +354,7 @@ public class ProductDto {
     public static class ProductFilterRequest {
         private String keyword;
         private UUID categoryId;
+        private UUID sellerId;
         private Long minPricePaise;
         private Long maxPricePaise;
         private Double minRating;
@@ -354,6 +374,8 @@ public class ProductDto {
         public void setKeyword(String keyword) { this.keyword = keyword; }
         public UUID getCategoryId() { return categoryId; }
         public void setCategoryId(UUID categoryId) { this.categoryId = categoryId; }
+        public UUID getSellerId() { return sellerId; }
+        public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
         public Long getMinPricePaise() { return minPricePaise; }
         public void setMinPricePaise(Long minPricePaise) { this.minPricePaise = minPricePaise; }
         public Long getMaxPricePaise() { return maxPricePaise; }

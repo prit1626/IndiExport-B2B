@@ -24,13 +24,28 @@ public class BuyerPaymentController {
 
     /**
      * POST /buyer/orders/{orderId}/pay
-     * Creates or retrieves a payment intent for Stripe checkout.
+     * Creates or retrieves a Razorpay order.
      */
     @PostMapping("/{orderId}/pay")
-    public ResponseEntity<PaymentDto.CreatePaymentResponse> createPayment(
+    public ResponseEntity<PaymentDto.RazorpayOrderResponse> createPayment(
             @PathVariable UUID orderId) {
         UUID userId = getCurrentUserId();
-        return ResponseEntity.ok(paymentService.createPaymentIntent(userId, orderId));
+        return ResponseEntity.ok(paymentService.createRazorpayOrder(userId, orderId));
+    }
+
+    /**
+     * POST /buyer/orders/{orderId}/verify
+     * Verifies Razorpay payment signature.
+     */
+    @PostMapping("/{orderId}/verify")
+    public ResponseEntity<Void> verifyPayment(
+            @PathVariable UUID orderId,
+            @RequestBody PaymentDto.RazorpayVerifyRequest request) {
+        UUID userId = getCurrentUserId();
+        // Ensure the orderId in path matches request if needed, or just set it
+        request.setPlatformOrderId(orderId);
+        paymentService.verifyRazorpayPayment(userId, request);
+        return ResponseEntity.ok().build();
     }
 
     /**

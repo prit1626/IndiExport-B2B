@@ -33,6 +33,22 @@ public class SellerProfileDto {
         private Integer activeProducts;
         private long totalSalesPaise;
         private LocalDateTime createdAt;
+        
+        // Export Compliance
+        private String iecNumber;
+        private String iecStatus;
+        private String gstin;
+        private String panNumber;
+        private LocalDateTime verificationSubmittedAt;
+        
+        // Payout Info
+        private String payoutMethod;
+        private String accountHolderName;
+        private String accountNumberMasked;
+        private String ifscMasked;
+        
+        // Plan info
+        private String currentPlan;
 
         public SellerProfileResponse() {}
 
@@ -69,6 +85,27 @@ public class SellerProfileDto {
         public void setTotalSalesPaise(long totalSalesPaise) { this.totalSalesPaise = totalSalesPaise; }
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+        public String getIecNumber() { return iecNumber; }
+        public void setIecNumber(String iecNumber) { this.iecNumber = iecNumber; }
+        public String getIecStatus() { return iecStatus; }
+        public void setIecStatus(String iecStatus) { this.iecStatus = iecStatus; }
+        public String getGstin() { return gstin; }
+        public void setGstin(String gstin) { this.gstin = gstin; }
+        public String getPanNumber() { return panNumber; }
+        public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+        public LocalDateTime getVerificationSubmittedAt() { return verificationSubmittedAt; }
+        public void setVerificationSubmittedAt(LocalDateTime verificationSubmittedAt) { this.verificationSubmittedAt = verificationSubmittedAt; }
+        public String getPayoutMethod() { return payoutMethod; }
+        public void setPayoutMethod(String payoutMethod) { this.payoutMethod = payoutMethod; }
+        public String getAccountHolderName() { return accountHolderName; }
+        public void setAccountHolderName(String accountHolderName) { this.accountHolderName = accountHolderName; }
+        public String getAccountNumberMasked() { return accountNumberMasked; }
+        public void setAccountNumberMasked(String accountNumberMasked) { this.accountNumberMasked = accountNumberMasked; }
+        public String getIfscMasked() { return ifscMasked; }
+        public void setIfscMasked(String ifscMasked) { this.ifscMasked = ifscMasked; }
+        public String getCurrentPlan() { return currentPlan; }
+        public void setCurrentPlan(String currentPlan) { this.currentPlan = currentPlan; }
     }
 
     /**

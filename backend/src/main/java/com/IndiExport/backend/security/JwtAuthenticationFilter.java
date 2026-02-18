@@ -67,9 +67,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         // Parse roles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
                         List<SimpleGrantedAuthority> authorities = parseAuthorities(rolesString);
 
+                        // Create UserDetails object (using Spring Security's User)
+                        org.springframework.security.core.userdetails.User principal = 
+                                new org.springframework.security.core.userdetails.User(email, "", authorities);
+
                         // Set authentication in context
                         UsernamePasswordAuthenticationToken authentication = 
-                                new UsernamePasswordAuthenticationToken(email, null, authorities);
+                                new UsernamePasswordAuthenticationToken(principal, null, authorities);
                         
                         // Store userId and email as additional context
                         authentication.setDetails(new JwtAuthenticationDetails(userId, email, rolesString));

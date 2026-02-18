@@ -22,7 +22,16 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     /**
      * Find orders by buyer ID with pagination
      */
-    Page<Order> findByBuyerIdOrderByCreatedAtDesc(UUID buyerId, Pageable pageable);
+    Page<Order> findByBuyerId(UUID buyerId, Pageable pageable);
+
+    /**
+     * Find orders by buyer and status
+     */
+    Page<Order> findByBuyerIdAndStatus(
+            UUID buyerId,
+            Order.OrderStatus status,
+            Pageable pageable
+    );
 
     /**
      * Find orders by seller ID with pagination
