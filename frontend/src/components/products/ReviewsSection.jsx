@@ -14,6 +14,12 @@ const ReviewsSection = ({ productId }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Add Review Modal State
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [newRating, setNewRating] = useState(0);
+    const [newComment, setNewComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+
     // Filters & Pagination
     const [filters, setFilters] = useState({
         page: 0,
@@ -60,6 +66,34 @@ const ReviewsSection = ({ productId }) => {
         </div>
     );
 
+    const handleSubmitReview = async () => {
+        if (!newRating || newRating < 1 || newRating > 5) {
+            alert('Please provide a valid rating between 1 and 5 stars.');
+            return;
+        }
+        if (!newComment.trim()) {
+            alert('Please provide a review comment.');
+            return;
+        }
+
+        setSubmittingReview(true);
+        try {
+            await productApi.createReview(productId, {
+                rating: newRating,
+                comment: newComment
+            });
+            setIsReviewOpen(false);
+            setNewRating(0);
+            setNewComment('');
+            fetchReviews(); // Refresh list
+        } catch (err) {
+            console.error('Failed to submit review:', err);
+            alert(err?.response?.data?.message || 'Failed to submit review');
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
+
     return (
         <div className="space-y-8">
             {/* Filter Bar */}
@@ -93,11 +127,12 @@ const ReviewsSection = ({ productId }) => {
                         checked={filters.verifiedOnly}
                         onChange={(val) => handleFilterChange('verifiedOnly', val)}
                     />
-                    {/* <Toggle 
-                        label="With Photos"
-                        checked={filters.photosOnly}
-                        onChange={(val) => handleFilterChange('photosOnly', val)}
-                    /> */}
+                    <button
+                        onClick={() => setIsReviewOpen(true)}
+                        className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                    >
+                        Write a Review
+                    </button>
                 </div>
             </div>
 
@@ -119,6 +154,56 @@ const ReviewsSection = ({ productId }) => {
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
                 />
+            )}
+
+            {/* Modal for Add Review */}
+            {isReviewOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-6">
+                        <h3 className="text-xl font-bold mb-4">Write a Review</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Rating</label>
+                                <div className="flex gap-2 text-2xl">
+                                    {[1, 2, 3, 4, 5].map(v => (
+                                        <button
+                                            key={v}
+                                            onClick={() => setNewRating(v)}
+                                            className={v <= newRating ? "text-amber-400" : "text-slate-300"}
+                                        >
+                                            ★
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Comment</label>
+                                <textarea
+                                    value={newComment}
+                                    onChange={e => setNewComment(e.target.value)}
+                                    className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-brand-500"
+                                    rows="4"
+                                    placeholder="Share your experience..."
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    onClick={() => setIsReviewOpen(false)}
+                                    className="px-4 py-2 border border-slate-300 rounded-lg font-medium hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSubmitReview}
+                                    disabled={submittingReview}
+                                    className="px-4 py-2 bg-brand-600 text-white rounded-lg font-medium hover:bg-brand-700 disabled:opacity-50"
+                                >
+                                    {submittingReview ? 'Submitting...' : 'Submit Review'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

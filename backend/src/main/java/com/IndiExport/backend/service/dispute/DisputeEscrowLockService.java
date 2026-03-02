@@ -18,9 +18,14 @@ public class DisputeEscrowLockService {
 
     @Transactional
     public void lockFunds(UUID orderId) {
-        Payment payment = paymentRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new RuntimeException("Payment not found for order: " + orderId));
+        java.util.Optional<Payment> paymentOpt = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
         
+        if (paymentOpt.isEmpty()) {
+            log.warn("Payment not found for order: {}. Cannot lock escrow.", orderId);
+            return;
+        }
+
+        Payment payment = paymentOpt.get();
         if (!payment.isDisputeLocked()) {
             payment.setDisputeLocked(true);
             paymentRepository.save(payment);
@@ -30,7 +35,7 @@ public class DisputeEscrowLockService {
 
     @Transactional
     public void unlockFunds(UUID orderId) {
-        Payment payment = paymentRepository.findByOrderId(orderId)
+        Payment payment = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId)
                 .orElseThrow(() -> new RuntimeException("Payment not found for order: " + orderId));
 
         if (payment.isDisputeLocked()) {

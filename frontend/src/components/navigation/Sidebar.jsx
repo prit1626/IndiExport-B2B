@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     LayoutDashboard, Package, ShoppingCart, ShoppingBag, MessageSquare,
     ShieldAlert, User, LogOut, ChevronLeft, ChevronRight,
-    ShieldCheck, TrendingUp, Settings, FileText, Users, CreditCard
+    ShieldCheck, TrendingUp, Settings, FileText, Users, CreditCard, FileSearch
 } from 'lucide-react';
 import NavItem from './NavItem';
 import useAuthStore from '../../store/authStore';
@@ -19,6 +19,7 @@ const Sidebar = ({ role }) => {
                     { to: '/products', icon: Package, label: 'Browse Products' },
                     { to: '/buyer/cart', icon: ShoppingCart, label: 'My Cart' },
                     { to: '/buyer/orders', icon: ShoppingBag, label: 'My Orders' },
+                    { to: '/buyer/rfq', icon: FileSearch, label: 'RFQ' },
                     { to: '/buyer/inquiries', icon: MessageSquare, label: 'Inquiries' },
                     { to: '/buyer/disputes', icon: ShieldAlert, label: 'Disputes' },
                     { to: '/buyer/profile', icon: User, label: 'My Profile' },
@@ -28,6 +29,7 @@ const Sidebar = ({ role }) => {
                     { to: '/seller/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
                     { to: '/seller/products', icon: Package, label: 'Products' },
                     { to: '/seller/orders', icon: ShoppingBag, label: 'Orders' },
+                    { to: '/seller/rfq', icon: FileSearch, label: 'Browse RFQs' },
                     { to: '/seller/inquiries', icon: MessageSquare, label: 'Inquiries' },
                     { to: '/seller/verification', icon: ShieldCheck, label: 'Verification' },
                     { to: '/seller/upgrade', icon: TrendingUp, label: 'Upgrade Plan' },

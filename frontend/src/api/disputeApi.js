@@ -6,7 +6,7 @@ const disputeApi = {
     raiseDispute: (formData) => {
         // formData should contain: orderId, reason, description, files (if supported) or evidenceUrls
         // If backend requires multipart/form-data for file upload directly:
-        return axiosClient.post('/disputes', formData, {
+        return axiosClient.post('/buyer/disputes', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -22,6 +22,14 @@ const disputeApi = {
         return axiosClient.get(`/buyer/disputes/${id}`);
     },
 
+    buyerAddEvidence: (id, formData) => {
+        return axiosClient.post(`/buyer/disputes/${id}/evidence`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            }
+        });
+    },
+
     // SELLER Operations
     sellerGetDisputes: (params) => {
         return axiosClient.get('/seller/disputes', { params });
@@ -29,6 +37,14 @@ const disputeApi = {
 
     sellerGetDisputeById: (id) => {
         return axiosClient.get(`/seller/disputes/${id}`);
+    },
+
+    sellerAddEvidence: (id, formData) => {
+        return axiosClient.post(`/seller/disputes/${id}/evidence`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            }
+        });
     },
 
     // ADMIN Operations
@@ -51,10 +67,12 @@ const disputeApi = {
         // return axiosClient.get('/disputes/reasons');
         return Promise.resolve({
             data: [
-                'DAMAGED_GOODS',
-                'INCORRECT_ITEM',
-                'DELAYED_DELIVERY',
-                'PAYMENT_CONFLICT',
+                'ITEM_NOT_RECEIVED',
+                'NOT_AS_DESCRIBED',
+                'DAMAGED_ON_ARRIVAL',
+                'WRONG_ITEM_SENT',
+                'MISSING_PARTS',
+                'FAKE_OR_COUNTERFEIT',
                 'OTHER'
             ]
         });

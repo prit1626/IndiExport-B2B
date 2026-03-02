@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CreditCard, Zap, CheckCircle2, ArrowUpRight } from 'lucide-react';
 
 const PlanInfoCard = ({ profile }) => {
+    const navigate = useNavigate();
     const isAdvanced = profile?.currentPlan === 'ADVANCED_SELLER';
 
     return (
@@ -15,8 +17,8 @@ const PlanInfoCard = ({ profile }) => {
 
             <div className="flex-1">
                 <div className={`p-5 rounded-2xl border-2 transition-all duration-300 ${isAdvanced
-                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400/30 text-white shadow-lg shadow-indigo-500/20'
-                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'
+                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400/30 text-white shadow-lg shadow-indigo-500/20'
+                    : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'
                     }`}>
                     <div className="flex justify-between items-start mb-4">
                         <div>
@@ -47,7 +49,10 @@ const PlanInfoCard = ({ profile }) => {
                 </div>
 
                 {!isAdvanced && (
-                    <button className="w-full mt-6 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 transition-all active:scale-95 group">
+                    <button
+                        onClick={() => navigate('/seller/upgrade')}
+                        className="w-full mt-6 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 transition-all active:scale-95 group"
+                    >
                         Upgrade to Advanced
                         <ArrowUpRight size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </button>

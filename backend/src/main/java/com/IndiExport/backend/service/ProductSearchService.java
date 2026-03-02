@@ -82,18 +82,30 @@ public class ProductSearchService {
                 predicates.add(cb.or(namePred, descPred, brandPred, tagPred));
             }
 
-            // 3. Category filter
+            // 3. Category filter (ID or Name)
             if (filter.getCategoryId() != null) {
                 Join<Product, Category> catJoin = root.join("categories", JoinType.INNER);
                 predicates.add(cb.equal(catJoin.get("id"), filter.getCategoryId()));
+            } else if (StringUtils.hasText(filter.getCategory())) {
+                Join<Product, Category> catJoin = root.join("categories", JoinType.INNER);
+                predicates.add(cb.like(cb.lower(catJoin.get("name")), "%" + filter.getCategory().toLowerCase() + "%"));
             }
 
-            // 4. Price range
-            if (filter.getMinPricePaise() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("pricePaise"), filter.getMinPricePaise()));
+            // 4. Price range (Support both Paise and raw amount)
+            Long minPaise = filter.getMinPricePaise();
+            if (minPaise == null && filter.getMinPrice() != null) {
+                minPaise = (long) (filter.getMinPrice() * 100);
             }
-            if (filter.getMaxPricePaise() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("pricePaise"), filter.getMaxPricePaise()));
+            if (minPaise != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("pricePaise"), minPaise));
+            }
+
+            Long maxPaise = filter.getMaxPricePaise();
+            if (maxPaise == null && filter.getMaxPrice() != null) {
+                maxPaise = (long) (filter.getMaxPrice() * 100);
+            }
+            if (maxPaise != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("pricePaise"), maxPaise));
             }
 
             // 5. Rating

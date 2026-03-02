@@ -33,4 +33,14 @@ public class DisputeResponse {
     private String resolutionNotes;
     private Long partialRefundAmountMinor;
     private List<EvidenceResponse> evidence;
+    private OrderSummaryDto orderSummary;
+
+    @Data
+    @Builder
+    public static class OrderSummaryDto {
+        private String trackingNumber;
+        private String courier;
+        private String status;
+        private String shippingMode;
+    }
 }

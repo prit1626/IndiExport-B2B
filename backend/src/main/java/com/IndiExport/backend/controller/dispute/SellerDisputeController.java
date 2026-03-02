@@ -21,15 +21,24 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/api/v1/seller/disputes")
-@RequiredArgsConstructor
 public class SellerDisputeController {
 
     private final DisputeService disputeService;
     private final UserRepository userRepository;
     private final com.IndiExport.backend.repository.SellerProfileRepository sellerProfileRepository;
+    private final com.IndiExport.backend.service.FileStorageService fileStorageService;
+
+    @Autowired
+    public SellerDisputeController(DisputeService disputeService, UserRepository userRepository, com.IndiExport.backend.repository.SellerProfileRepository sellerProfileRepository, com.IndiExport.backend.service.FileStorageService fileStorageService) {
+        this.disputeService = disputeService;
+        this.userRepository = userRepository;
+        this.sellerProfileRepository = sellerProfileRepository;
+        this.fileStorageService = fileStorageService;
+    }
 
     @PostMapping
     @PreAuthorize("hasRole('SELLER')")
@@ -44,19 +53,27 @@ public class SellerDisputeController {
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<Page<DisputeListResponse>> getMyDisputes(
             @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) com.IndiExport.backend.entity.DisputeStatus status,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         User user = getUser(userDetails);
-        return ResponseEntity.ok(disputeService.getDisputesForSeller(getSellerId(user), pageable));
+        return ResponseEntity.ok(disputeService.getDisputesForSeller(getSellerId(user), status, pageable));
     }
 
-    @PostMapping("/{disputeId}/evidence")
+    @PostMapping(value = "/{disputeId}/evidence", consumes = {"multipart/form-data"})
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<EvidenceResponse> addEvidence(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable UUID disputeId,
-            @RequestBody @Valid AddEvidenceRequest request) {
+            @RequestPart("file") org.springframework.web.multipart.MultipartFile file) {
         User user = getUser(userDetails);
-        return ResponseEntity.ok(disputeService.addEvidence(disputeId, user.getId(), request));
+        
+        String url;
+        try {
+            url = fileStorageService.uploadFile(file, "disputes/evidence");
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to upload evidence", e);
+        }
+        return ResponseEntity.ok(disputeService.addEvidence(disputeId, user.getId(), url));
     }
     
     @GetMapping("/{disputeId}")

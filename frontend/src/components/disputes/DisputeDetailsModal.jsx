@@ -8,6 +8,7 @@ import { formatMoney } from '../../utils/formatMoney';
 import DisputeStatusBadge from './DisputeStatusBadge';
 import DisputeEvidenceGallery from './DisputeEvidenceGallery';
 import ResolveDisputeForm from './ResolveDisputeForm';
+import AddEvidenceForm from './AddEvidenceForm';
 import useAuthStore from '../../store/authStore';
 
 const DisputeDetailsModal = ({ isOpen, onClose, dispute, onResolve }) => {
@@ -107,12 +108,22 @@ const DisputeDetailsModal = ({ isOpen, onClose, dispute, onResolve }) => {
                         )}
 
                         {/* Admin Action Area */}
-                        {isAdmin && dispute.status !== 'RESOLVED' && (
+                        {isAdmin && dispute.status !== 'RESOLVED' && dispute.status !== 'REJECTED' && (
                             <div className="mt-8 border-t border-slate-200 pt-6">
                                 <h4 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
                                     <AlertTriangle className="text-amber-500" size={20} /> Admin Action
                                 </h4>
                                 <ResolveDisputeForm disputeId={dispute.id} onResolve={onResolve} />
+                            </div>
+                        )}
+
+                        {/* User Action Area (Add Evidence) */}
+                        {!isAdmin && dispute.status !== 'RESOLVED' && dispute.status !== 'REJECTED' && (
+                            <div className="mt-8 border-t border-slate-200 pt-6">
+                                <AddEvidenceForm
+                                    disputeId={dispute.id}
+                                    onEvidenceAdded={onResolve}
+                                />
                             </div>
                         )}
                     </div>

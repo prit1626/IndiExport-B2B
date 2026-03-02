@@ -28,11 +28,12 @@ const PublicSellerProfilePage = () => {
         setLoading(true);
         setLoadingProducts(true);
         try {
-            const profileData = await profileApi.getPublicSellerProfile(id);
-            setProfile(profileData);
+            const profileRes = await profileApi.getPublicSellerProfile(id);
+            setProfile(profileRes.data || profileRes);
 
-            const productData = await productApi.getProducts({ sellerId: id, size: 20 });
-            setProducts(productData.content || []);
+            const productRes = await productApi.getProducts({ sellerId: id, size: 20 });
+            const pData = productRes.data || productRes;
+            setProducts(pData.content || []);
 
             setError(null);
         } catch (err) {
@@ -110,12 +111,14 @@ const PublicSellerProfilePage = () => {
                                     <span className="text-slate-500 font-medium">Average Rating</span>
                                     <div className="flex items-center gap-1 text-amber-500 font-bold">
                                         <Star size={14} fill="currentColor" />
-                                        {(profile?.averageRatingMilli / 1000).toFixed(1) || '0.0'}
+                                        {profile?.averageRatingMilli ? (profile.averageRatingMilli / 1000).toFixed(1) : '0.0'}
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500 font-medium">Verified since</span>
-                                    <span className="text-slate-900 dark:text-white font-bold">{new Date(profile?.createdAt).getFullYear()}</span>
+                                    <span className="text-slate-900 dark:text-white font-bold">
+                                        {profile?.createdAt ? new Date(profile.createdAt).getFullYear() : '2026'}
+                                    </span>
                                 </div>
                             </div>
                         </div>

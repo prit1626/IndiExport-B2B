@@ -94,7 +94,7 @@ public class DisputeService {
     }
 
     @Transactional
-    public EvidenceResponse addEvidence(UUID disputeId, UUID userId, AddEvidenceRequest request) {
+    public EvidenceResponse addEvidence(UUID disputeId, UUID userId, String fileUrl) {
         Dispute dispute = disputeRepository.findById(disputeId)
                 .orElseThrow(() -> new DisputeNotFoundException("Dispute not found"));
 
@@ -117,8 +117,8 @@ public class DisputeService {
                 .dispute(dispute)
                 .uploadedByUserId(userId)
                 .uploadedByRole(role)
-                .fileUrl(request.getFileUrl())
-                .fileType(request.getFileType() != null ? request.getFileType() : "IMAGE")
+                .fileUrl(fileUrl)
+                .fileType("IMAGE")
                 .build();
 
         return mapToEvidenceResponse(evidenceRepository.save(evidence));
@@ -127,13 +127,21 @@ public class DisputeService {
     // --- Finding / listing ---
 
     @Transactional(readOnly = true)
-    public Page<DisputeListResponse> getDisputesForBuyer(UUID buyerId, Pageable pageable) {
+    public Page<DisputeListResponse> getDisputesForBuyer(UUID buyerId, DisputeStatus status, Pageable pageable) {
+        if (status != null) {
+            return disputeRepository.findByBuyerIdAndStatus(buyerId, status, pageable)
+                    .map(this::mapToListResponse);
+        }
         return disputeRepository.findByBuyerId(buyerId, pageable)
                 .map(this::mapToListResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<DisputeListResponse> getDisputesForSeller(UUID sellerId, Pageable pageable) {
+    public Page<DisputeListResponse> getDisputesForSeller(UUID sellerId, DisputeStatus status, Pageable pageable) {
+        if (status != null) {
+            return disputeRepository.findBySellerIdAndStatus(sellerId, status, pageable)
+                    .map(this::mapToListResponse);
+        }
         return disputeRepository.findBySellerId(sellerId, pageable)
                 .map(this::mapToListResponse);
     }
@@ -221,6 +229,13 @@ public class DisputeService {
                 .evidence(dispute.getEvidence() != null 
                     ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
                     : List.of())
+                .orderSummary(DisputeResponse.OrderSummaryDto.builder()
+                    .trackingNumber(dispute.getOrder().getTrackingNumber())
+                    .courier(dispute.getOrder().getShippingCourier())
+                    .status(dispute.getOrder().getStatus().name())
+                    .shippingMode(dispute.getOrder().getShippingQuote() != null ? 
+                        dispute.getOrder().getShippingQuote().getMode().name() : "STANDARD")
+                    .build())
                 .build();
     }
     
@@ -249,6 +264,13 @@ public class DisputeService {
                 .evidence(dispute.getEvidence() != null 
                     ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
                     : List.of())
+                .orderSummary(DisputeResponse.OrderSummaryDto.builder()
+                    .trackingNumber(dispute.getOrder().getTrackingNumber())
+                    .courier(dispute.getOrder().getShippingCourier())
+                    .status(dispute.getOrder().getStatus().name())
+                    .shippingMode(dispute.getOrder().getShippingQuote() != null ? 
+                        dispute.getOrder().getShippingQuote().getMode().name() : "STANDARD")
+                    .build())
                 .build();
     }
 

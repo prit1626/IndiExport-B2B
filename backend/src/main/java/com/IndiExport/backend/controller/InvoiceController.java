@@ -35,10 +35,39 @@ public class InvoiceController {
     public ResponseEntity<InvoiceDownloadResponse> downloadInvoice(@PathVariable UUID id) {
         UUID currentUserId = getCurrentUserId();
         boolean isAdmin = isAdmin();
-        
-        // Service handles access control logic
-        InvoiceDownloadResponse response = invoiceService.downloadInvoice(id, currentUserId, isAdmin);
-        
+        InvoiceDownloadResponse invoiceData = invoiceService.downloadInvoice(id, currentUserId, isAdmin);
+        return ResponseEntity.ok(invoiceData);
+    }
+
+    /**
+     * Stream invoice PDF bytes directly — no Cloudinary, no 401, no MIME issues.
+     * Frontend calls this with JWT Authorization header and creates a blob URL.
+     */
+    @GetMapping(value = "/order/{orderId}/pdf", produces = "application/pdf")
+    @PreAuthorize("hasAnyRole('BUYER', 'SELLER')")
+    public ResponseEntity<byte[]> downloadInvoicePdfByOrder(@PathVariable UUID orderId) {
+        UUID currentUserId = getCurrentUserId();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String role = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SELLER")) ? "SELLER" : "BUYER";
+
+        byte[] pdfBytes = invoiceService.generatePdfBytesForOrder(orderId, currentUserId, role);
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header("Content-Disposition", "inline; filename=\"invoice.pdf\"")
+                .header("Content-Length", String.valueOf(pdfBytes.length))
+                .body(pdfBytes);
+    }
+
+    @GetMapping("/order/{orderId}")
+    @PreAuthorize("hasAnyRole('BUYER', 'SELLER')")
+    public ResponseEntity<InvoiceDownloadResponse> getInvoiceByOrderId(@PathVariable UUID orderId) {
+        UUID currentUserId = getCurrentUserId();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String role = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SELLER")) ? "SELLER" : "BUYER";
+        InvoiceDownloadResponse response = invoiceService.getInvoiceByOrderId(orderId, currentUserId, role);
         return ResponseEntity.ok(response);
     }
 

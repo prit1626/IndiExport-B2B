@@ -19,6 +19,7 @@ public class ShippingQuote {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false, unique = true)
     private Order order;

@@ -28,7 +28,7 @@ const TotalsCard = ({ totals, currencySnapshot }) => {
                 <span>{getValue('shippingINRPaise', 'shippingConvertedMinor')}</span>
             </div>
 
-            {totals.taxINRPaise > 0 && (
+            {totals?.taxINRPaise > 0 && (
                 <div className="flex justify-between text-slate-600 text-sm">
                     <span>Tax / GST</span>
                     <span>{getValue('taxINRPaise', 'taxConvertedMinor')}</span>

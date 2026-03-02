@@ -35,6 +35,6 @@ public class AdminDisputeResponse {
     private DisputeResolutionAction resolutionAction;
     private String resolutionNotes;
     private Long partialRefundAmountMinor;
-    
     private List<EvidenceResponse> evidence;
+    private DisputeResponse.OrderSummaryDto orderSummary;
 }

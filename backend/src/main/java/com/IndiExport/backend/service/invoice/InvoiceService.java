@@ -137,6 +137,115 @@ public class InvoiceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
 
         InvoiceDownloadResponse response = new InvoiceDownloadResponse();
+        response.setId(invoice.getId());
+        response.setFileName(invoice.getInvoiceNumber() + ".pdf");
+        response.setContentType("application/pdf");
+        response.setDownloadUrl(invoice.getPdfUrl());
+        return response;
+    }
+
+    /**
+     * Generate PDF bytes on-demand for a specific invoice without Cloudinary.
+     * Fetches the stored invoice data, rebuilds entity relationships, and regenerates the PDF.
+     */
+    public byte[] generatePdfBytes(UUID invoiceId, UUID currentUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
+
+        Order order = orderRepository.findById(invoice.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found for invoice"));
+
+        SellerProfile seller = order.getSeller();
+        BuyerProfile buyer = order.getBuyer();
+
+        return pdfGeneratorService.generateInvoicePdf(invoice, order, seller, buyer);
+    }
+
+    /**
+     * Generate or retrieve PDF bytes for an order, auto-creating the invoice if needed.
+     * This is the primary download path — no Cloudinary needed.
+     */
+    @Transactional
+    public byte[] generatePdfBytesForOrder(UUID orderId, UUID currentUserId, String role) {
+        InvoiceSide side = role.equals("SELLER") ? InvoiceSide.SELLER_COPY : InvoiceSide.BUYER_COPY;
+
+        // Try to find an existing invoice
+        Invoice invoice = invoiceRepository.findByOrderId(orderId, Pageable.unpaged()).getContent()
+                .stream()
+                .filter(inv -> inv.getSide() == side)
+                .findFirst()
+                .orElse(null);
+
+        // Auto-generate if not found and order is in a valid state
+        if (invoice == null) {
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+
+            boolean canGenerate = order.getStatus() == Order.OrderStatus.PAID
+                    || order.getStatus() == Order.OrderStatus.READY_TO_SHIP
+                    || order.getStatus() == Order.OrderStatus.SHIPPED
+                    || order.getStatus() == Order.OrderStatus.IN_TRANSIT
+                    || order.getStatus() == Order.OrderStatus.DELIVERED
+                    || order.getStatus() == Order.OrderStatus.COMPLETED;
+
+            if (!canGenerate) {
+                throw new BusinessRuleViolationException("Invoice not available yet. Order must be paid first.");
+            }
+
+            createProformaInvoice(orderId);
+
+            invoice = invoiceRepository.findByOrderId(orderId, Pageable.unpaged()).getContent()
+                    .stream()
+                    .filter(inv -> inv.getSide() == side)
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("Invoice generation failed"));
+        }
+
+        Order order = orderRepository.findById(invoice.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        return pdfGeneratorService.generateInvoicePdf(invoice, order, order.getSeller(), order.getBuyer());
+    }
+    
+    public InvoiceDownloadResponse getInvoiceByOrderId(UUID orderId, UUID currentUserId, String role) {
+        InvoiceSide side = role.equals("SELLER") ? InvoiceSide.SELLER_COPY : InvoiceSide.BUYER_COPY;
+        
+        List<Invoice> invoices = invoiceRepository.findByOrderId(orderId, Pageable.unpaged()).getContent();
+        
+        Invoice invoice = invoices.stream()
+                .filter(inv -> inv.getSide() == side)
+                .findFirst()
+                .orElseGet(() -> {
+                    Order order = orderRepository.findById(orderId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+
+                    // Auto-generate invoice for any paid or shipped order that doesn't have one yet
+                    boolean canGenerate = order.getStatus() == Order.OrderStatus.PAID
+                            || order.getStatus() == Order.OrderStatus.READY_TO_SHIP
+                            || order.getStatus() == Order.OrderStatus.SHIPPED
+                            || order.getStatus() == Order.OrderStatus.IN_TRANSIT
+                            || order.getStatus() == Order.OrderStatus.DELIVERED
+                            || order.getStatus() == Order.OrderStatus.COMPLETED;
+
+                    if (canGenerate) {
+                        try {
+                            // Try proforma first, fall back to final invoice generation
+                            createProformaInvoice(orderId);
+                            return invoiceRepository.findByOrderId(orderId, Pageable.unpaged()).getContent()
+                                    .stream()
+                                    .filter(inv -> inv.getSide() == side)
+                                    .findFirst()
+                                    .orElseThrow(() -> new ResourceNotFoundException("Invoice generation failed for order: " + orderId));
+                        } catch (Exception e) {
+                            log.error("Failed to dynamically generate invoice for order {}", orderId, e);
+                            throw new ResourceNotFoundException("Invoice not found for order: " + orderId);
+                        }
+                    }
+                    throw new ResourceNotFoundException("Invoice not available yet. Order must be paid before an invoice is generated.");
+                });
+                
+        InvoiceDownloadResponse response = new InvoiceDownloadResponse();
+        response.setId(invoice.getId());
         response.setFileName(invoice.getInvoiceNumber() + ".pdf");
         response.setContentType("application/pdf");
         response.setDownloadUrl(invoice.getPdfUrl());

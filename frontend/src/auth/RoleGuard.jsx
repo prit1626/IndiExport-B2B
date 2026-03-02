@@ -7,12 +7,23 @@ const RoleGuard = ({ children, allowedRoles }) => {
     const { user } = useAuthStore();
     const location = useLocation();
 
-    // Determine permissions
-    const userRoles = user?.roles || (user?.role ? [user.role] : []);
-    const hasPermission = userRoles.some(role => allowedRoles.includes(role));
+    // Determine normalized user roles
+    const rawRoles = user?.roles || (user?.role ? user.role.split(',') : []);
+    const normalizedUserRoles = rawRoles.map(role =>
+        role.toString().toUpperCase().replace('ROLE_', '').trim()
+    );
+
+    // Normalize allowed roles for comparison
+    const normalizedAllowedRoles = allowedRoles.map(role =>
+        role.toString().toUpperCase().replace('ROLE_', '').trim()
+    );
+
+    const hasPermission = normalizedUserRoles.some(role =>
+        normalizedAllowedRoles.includes(role)
+    );
 
     // Redirect logic
-    const defaultRole = userRoles[0]?.replace('ROLE_', '');
+    const defaultRole = normalizedUserRoles[0];
     const targetPath = defaultRole ? `/${defaultRole.toLowerCase()}/dashboard` : '/403';
 
     useEffect(() => {

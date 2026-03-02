@@ -10,12 +10,12 @@ const cartApi = {
         return await axiosClient.get('/buyer/cart');
     },
 
-    updateCartItem: async (itemId, quantity) => {
-        return await axiosClient.put(`/buyer/cart/items/${itemId}`, { quantity });
+    updateCartItem: async (itemId, payload) => {
+        return await axiosClient.put(`/buyer/cart/item/${itemId}`, payload);
     },
 
     removeFromCart: async (itemId) => {
-        return await axiosClient.delete(`/buyer/cart/items/${itemId}`);
+        return await axiosClient.delete(`/buyer/cart/item/${itemId}`);
     },
 
     clearCart: async () => {

@@ -30,6 +30,9 @@ import BuyerInquiriesPage from './pages/buyer/BuyerInquiriesPage';
 import BuyerInquiryChatPage from './pages/buyer/BuyerInquiryChatPage';
 import BuyerDisputesPage from './pages/buyer/BuyerDisputesPage';
 import BuyerProfilePage from './pages/buyer/BuyerProfilePage';
+import BuyerRfqListPage from './pages/buyer/BuyerRfqListPage';
+import BuyerRfqCreatePage from './pages/buyer/BuyerRfqCreatePage';
+import BuyerRfqDetailsPage from './pages/buyer/BuyerRfqDetailsPage';
 
 // Seller Pages
 import SellerDashboardPage from './pages/seller/SellerDashboardPage';
@@ -44,6 +47,9 @@ import SellerDisputesPage from './pages/seller/SellerDisputesPage';
 import SellerVerificationPage from './pages/seller/SellerVerificationPage';
 import SellerDocumentsUploadPage from './pages/seller/SellerDocumentsUploadPage';
 import SellerProfilePage from './pages/seller/SellerProfilePage';
+import UpgradePlanPage from './pages/seller/UpgradePlanPage';
+import SellerRfqBrowsePage from './pages/seller/SellerRfqBrowsePage';
+import SellerRfqDetailsPage from './pages/seller/SellerRfqDetailsPage';
 
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -60,7 +66,6 @@ import NotFoundPage from './pages/common/NotFoundPage';
 import AccessDeniedPage from './pages/common/AccessDeniedPage';
 
 // Placeholder/Missing Pages (User mentioned these in architecture but they might not exist yet)
-const SellerUpgradePage = () => <div className="p-8"><h1 className="text-2xl font-bold">Upgrade Your Plan</h1><p className="mt-4 text-slate-500">Coming soon.</p></div>;
 const SellerBillingPage = () => <div className="p-8"><h1 className="text-2xl font-bold">Billing & Invoices</h1><p className="mt-4 text-slate-500">Coming soon.</p></div>;
 const HomePage = () => <Navigate to="/products" replace />; // Default home to products for now
 
@@ -98,6 +103,9 @@ export const appRoutes = [
             { path: 'inquiries/:chatId', element: <BuyerInquiryChatPage /> },
             { path: 'disputes', element: <BuyerDisputesPage /> },
             { path: 'profile', element: <BuyerProfilePage /> },
+            { path: 'rfq', element: <BuyerRfqListPage /> },
+            { path: 'rfq/create', element: <BuyerRfqCreatePage /> },
+            { path: 'rfq/:rfqId', element: <BuyerRfqDetailsPage /> },
         ]
     },
     {
@@ -115,9 +123,11 @@ export const appRoutes = [
             { path: 'disputes', element: <SellerDisputesPage /> },
             { path: 'verification', element: <SellerVerificationPage /> },
             { path: 'verification/upload', element: <SellerDocumentsUploadPage /> },
-            { path: 'upgrade', element: <SellerUpgradePage /> },
+            { path: 'upgrade', element: <UpgradePlanPage /> },
             { path: 'billing', element: <SellerBillingPage /> },
             { path: 'profile', element: <SellerProfilePage /> },
+            { path: 'rfq', element: <SellerRfqBrowsePage /> },
+            { path: 'rfq/:id', element: <SellerRfqDetailsPage /> },
         ]
     },
     {

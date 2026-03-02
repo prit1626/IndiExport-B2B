@@ -63,6 +63,7 @@ public class ChatMessage {
     @Column
     private Long shippingEstimateInrPaise;
 
+    @Builder.Default
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 }

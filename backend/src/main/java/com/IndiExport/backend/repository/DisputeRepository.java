@@ -25,9 +25,11 @@ public interface DisputeRepository extends JpaRepository<Dispute, UUID> {
 
     // Buyer disputes
     Page<Dispute> findByBuyerId(UUID buyerId, Pageable pageable);
-    
+    Page<Dispute> findByBuyerIdAndStatus(UUID buyerId, DisputeStatus status, Pageable pageable);
+
     // Seller disputes
     Page<Dispute> findBySellerId(UUID sellerId, Pageable pageable);
+    Page<Dispute> findBySellerIdAndStatus(UUID sellerId, DisputeStatus status, Pageable pageable);
 
     // Admin filters
     @Query("SELECT d FROM Dispute d WHERE " +

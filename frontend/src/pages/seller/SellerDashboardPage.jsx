@@ -22,7 +22,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 const SellerDashboardPage = () => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const isAdvanced = user?.sellerPlan === 'ADVANCED_SELLER';
+    const isAdvanced = user?.sellerDetails?.planType === 'ADVANCED_SELLER';
 
     const [loading, setLoading] = useState(true);
     const [basicData, setBasicData] = useState(null);

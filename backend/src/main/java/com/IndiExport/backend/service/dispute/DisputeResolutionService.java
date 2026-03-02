@@ -40,7 +40,11 @@ public class DisputeResolutionService {
             if (request.getPartialRefundAmountMinor() == null || request.getPartialRefundAmountMinor() <= 0) {
                 throw new InvalidRefundAmountException("Partial refund amount must be positive");
             }
-            long paymentAmount = dispute.getOrder().getPayment().getAmountMinor();
+            com.IndiExport.backend.entity.Payment latestPayment = dispute.getOrder().getLatestPayment();
+            if (latestPayment == null) {
+                throw new DisputeResolutionException("No payment found for this order");
+            }
+            long paymentAmount = latestPayment.getAmountMinor();
             if (request.getPartialRefundAmountMinor() > paymentAmount) {
                  throw new InvalidRefundAmountException("Refund amount cannot exceed payment amount");
             }

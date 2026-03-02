@@ -127,7 +127,11 @@ public class ChatService {
         MessageResponse lastMsgDto = lastMsg != null ? chatMessageService.mapToResponse(lastMsg) : null;
 
         // Unread count
-        ChatParticipant participant = chatParticipantRepository.findByChatIdAndUserId(chat.getId(), viewerId).orElse(null);
+        UUID userId = (viewerRole == com.IndiExport.backend.entity.Role.RoleType.BUYER) 
+                ? chat.getBuyer().getUser().getId() 
+                : chat.getSeller().getUser().getId();
+                
+        ChatParticipant participant = chatParticipantRepository.findByChatIdAndUserId(chat.getId(), userId).orElse(null);
         Instant lastRead = participant != null && participant.getLastReadAt() != null ? participant.getLastReadAt() : Instant.EPOCH;
         int unread = chatParticipantRepository.countUnreadMessages(chat.getId(), lastRead);
 

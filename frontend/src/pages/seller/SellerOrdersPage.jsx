@@ -90,12 +90,15 @@ const SellerOrdersPage = () => {
                             className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block w-full sm:w-48 p-2.5"
                         >
                             <option value="">All Statuses</option>
-                            <option value="CREATED">Created</option>
+                            <option value="PENDING_CONFIRMATION">Pending Confirmation</option>
+                            <option value="CONFIRMED">Confirmed</option>
                             <option value="PAID">Paid</option>
-                            <option value="PROCESSING">Processing</option>
+                            <option value="READY_TO_SHIP">Ready to Ship</option>
                             <option value="SHIPPED">Shipped</option>
                             <option value="DELIVERED">Delivered</option>
+                            <option value="COMPLETED">Completed</option>
                             <option value="CANCELLED">Cancelled</option>
+                            <option value="RETURNED">Returned</option>
                         </select>
                     </div>
 

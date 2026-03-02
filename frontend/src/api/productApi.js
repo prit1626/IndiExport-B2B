@@ -10,6 +10,15 @@ const productApi = {
         return await axiosClient.get(`/products/${id}`);
     },
 
+    getProductReviews: async (id, params) => {
+        return await axiosClient.get(`/public/products/${id}/reviews`, { params });
+    },
+
+    // Buyer Endpoints
+    createReview: async (id, payload) => {
+        return await axiosClient.post(`/buyer/products/${id}/review`, payload);
+    },
+
     // Seller Endpoints
     sellerCreateProduct: async (payload) => {
         return await axiosClient.post('/sellers/products', payload);

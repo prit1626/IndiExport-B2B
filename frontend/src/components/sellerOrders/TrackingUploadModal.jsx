@@ -9,16 +9,29 @@ const TrackingUploadModal = ({ isOpen, onClose, orderId, onSuccess, existingTrac
     const [submitting, setSubmitting] = useState(false);
     const { register, handleSubmit, formState: { errors }, reset } = useForm({
         defaultValues: {
-            courier: existingTracking?.courier || '',
+            courier: existingTracking?.courierName || existingTracking?.courier || '',
             trackingNumber: existingTracking?.trackingNumber || '',
-            notes: existingTracking?.notes || ''
+            notes: existingTracking?.trackingUrl || existingTracking?.notes || ''
         }
     });
 
     const onSubmit = async (data) => {
         setSubmitting(true);
         try {
-            await sellerOrderApi.sellerUploadTracking(orderId, data);
+            const payload = {
+                courierName: data.courier,
+                trackingNumber: data.trackingNumber,
+                shippedAt: new Date().toISOString() // Backend requires Instant
+            };
+            if (data.notes) {
+                payload.trackingUrl = data.notes; // Optional mapping
+            }
+
+            if (existingTracking) {
+                await sellerOrderApi.sellerUpdateTracking(orderId, payload);
+            } else {
+                await sellerOrderApi.sellerUploadTracking(orderId, payload);
+            }
             toast.success('Tracking updated successfully');
             onSuccess();
             onClose();

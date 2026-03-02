@@ -22,7 +22,17 @@ const useAuthStore = create((set, get) => ({
         }));
     },
 
-    setUser: (user) => set({ user, isAuthenticated: !!user }),
+    setUser: (user) => {
+        if (user) {
+            // Normalize role vs roles from different API endpoints (LoginResponse vs MeResponse)
+            if (user.roles && !user.role) {
+                user.role = user.roles[0];
+            } else if (user.role && !user.roles) {
+                user.roles = [user.role];
+            }
+        }
+        set({ user, isAuthenticated: !!user });
+    },
 
     // Actions
     login: async (apiLoginFn, credentials) => {
@@ -32,7 +42,8 @@ const useAuthStore = create((set, get) => ({
             const { accessToken, refreshToken, user } = response.data;
 
             get().setTokens({ accessToken, refreshToken });
-            set({ user, isAuthenticated: true, isLoading: false });
+            get().setUser(user);
+            set({ isLoading: false });
             return true;
         } catch (err) {
             set({
@@ -67,7 +78,8 @@ const useAuthStore = create((set, get) => ({
 
         try {
             const response = await getMeFn();
-            set({ user: response.data, isAuthenticated: true, isBootstrapping: false });
+            get().setUser(response.data);
+            set({ isBootstrapping: false });
         } catch (error) {
             get().logout();
             set({ isBootstrapping: false, isAuthenticated: false });
@@ -77,7 +89,7 @@ const useAuthStore = create((set, get) => ({
     refreshUser: async (getMeFn) => {
         try {
             const response = await getMeFn();
-            set({ user: response.data, isAuthenticated: true });
+            get().setUser(response.data);
         } catch (error) {
             console.error("Failed to refresh user:", error);
         }

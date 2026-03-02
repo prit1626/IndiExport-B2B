@@ -88,6 +88,18 @@ public class RfqService {
         return mapToBuyerResponse(rfq);
     }
 
+    public BuyerRfqResponse getRfqForSeller(UUID rfqId) {
+        RFQ rfq = rfqRepository.findById(rfqId)
+                .orElseThrow(() -> new RfqNotFoundException("RFQ not found"));
+
+        // Sellers can only view RFQs that are open or under negotiation
+        if (rfq.getStatus() != RfqStatus.OPEN && rfq.getStatus() != RfqStatus.UNDER_NEGOTIATION) {
+            throw new RfqAccessDeniedException("This RFQ is no longer accepting quotes");
+        }
+
+        return mapToBuyerResponse(rfq);
+    }
+
     public Page<BuyerRfqResponse> getBuyerRfqs(UUID buyerId, Pageable pageable) {
         return rfqRepository.findByBuyerId(buyerId, pageable)
                 .map(this::mapToBuyerResponse);

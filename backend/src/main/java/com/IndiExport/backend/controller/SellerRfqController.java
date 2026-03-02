@@ -1,5 +1,6 @@
 package com.IndiExport.backend.controller;
 
+import com.IndiExport.backend.dto.BuyerRfqResponse;
 import com.IndiExport.backend.dto.SellerRfqListResponse;
 import com.IndiExport.backend.entity.Incoterm;
 import com.IndiExport.backend.entity.ShippingMode;
@@ -11,6 +12,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/seller/rfq")
@@ -33,5 +36,11 @@ public class SellerRfqController {
 
         return ResponseEntity.ok(rfqService.searchRfqs(
                 keyword, categoryId, destinationCountry, minQty, maxQty, shippingMode, incoterm, pageable));
+    }
+
+    @GetMapping("/{rfqId}")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<BuyerRfqResponse> getRfqById(@PathVariable UUID rfqId) {
+        return ResponseEntity.ok(rfqService.getRfqForSeller(rfqId));
     }
 }

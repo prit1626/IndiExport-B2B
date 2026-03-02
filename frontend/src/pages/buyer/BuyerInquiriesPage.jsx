@@ -19,7 +19,7 @@ const BuyerInquiriesPage = () => {
         try {
             setLoading(true);
             const { data } = await chatApi.getBuyerInquiryThreads();
-            setThreads(data);
+            setThreads(data.content || data || []);
         } catch (error) {
             console.error(error);
             toast.error('Failed to load inquiries');

@@ -27,7 +27,7 @@ const TrackingTimeline = ({ events = [] }) => {
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
                             <div>
                                 <h4 className={`font-medium ${isLatest ? 'text-slate-900' : 'text-slate-600'}`}>
-                                    {event.label}
+                                    {event.message || event.status}
                                 </h4>
                                 {event.location && (
                                     <div className="flex items-center gap-1 text-sm text-slate-500 mt-0.5">
@@ -38,7 +38,7 @@ const TrackingTimeline = ({ events = [] }) => {
                             </div>
                             <div className="flex items-center gap-1 text-xs text-slate-400 mt-1 sm:mt-0">
                                 <Clock size={12} />
-                                <span>{formatDate(event.time)}</span>
+                                <span>{formatDate(event.eventTime)}</span>
                             </div>
                         </div>
                     </div>

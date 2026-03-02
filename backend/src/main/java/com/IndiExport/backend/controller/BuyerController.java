@@ -30,14 +30,19 @@ public class BuyerController {
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<Map<String, Object>> getBuyerDashboard() {
-        UUID buyerId = getCurrentUserId();
+        UUID userId = getCurrentUserId();
+        
+        // Use OrderService to fetch recent orders
+        Map<String, Object> ordersData = orderService.getBuyerOrders(userId, 0, 5, null, "createdAt,desc");
+        List<Map<String, Object>> recentOrders = (List<Map<String, Object>>) ordersData.get("items");
         
         Map<String, Object> dashboard = new HashMap<>();
-        dashboard.put("message", "Buyer dashboard for: " + buyerId);
-        dashboard.put("recentOrders", new ArrayList<>());
-        dashboard.put("activeRFQs", new ArrayList<>());
-        dashboard.put("totalSpent", 0.0);
-        dashboard.put("ordersCount", 0);
+        dashboard.put("recentOrders", recentOrders);
+        dashboard.put("activeRFQs", new ArrayList<>()); // RFQ service not yet integrated here
+        dashboard.put("totalSpent", recentOrders.stream()
+                .mapToLong(o -> (long) o.getOrDefault("grandTotalINRPaise", 0L))
+                .sum() / 100.0);
+        dashboard.put("ordersCount", ordersData.get("totalItems"));
         
         return ResponseEntity.ok(dashboard);
     }
@@ -51,12 +56,22 @@ public class BuyerController {
     @GetMapping("/dashboard/analytics")
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<Map<String, Object>> getBuyerDashboardAnalytics() {
-        // UUID buyerId = getCurrentUserId(); // In future use to fetch real stats
+        UUID userId = getCurrentUserId();
+        Map<String, Object> ordersData = orderService.getBuyerOrders(userId, 0, 1000, null, null);
         
+        long totalOrders = (long) ordersData.getOrDefault("totalItems", 0L);
+        List<Map<String, Object>> items = (List<Map<String, Object>>) ordersData.getOrDefault("items", new ArrayList<>());
+        
+        double totalSpending = items.stream()
+                .mapToLong(o -> (long) o.getOrDefault("grandTotalINRPaise", 0L))
+                .sum() / 100.0;
+
         Map<String, Object> analytics = new HashMap<>();
-        analytics.put("totalOrders", 0);
-        analytics.put("activeShipmentsCount", 0);
-        analytics.put("totalSpending", 0.0);
+        analytics.put("totalOrders", totalOrders);
+        analytics.put("activeShipmentsCount", items.stream()
+                .filter(o -> "SHIPPED".equals(o.get("status")) || "IN_TRANSIT".equals(o.get("status")))
+                .count());
+        analytics.put("totalSpending", totalSpending);
         
         return ResponseEntity.ok(analytics);
     }
@@ -92,16 +107,7 @@ public class BuyerController {
         return ResponseEntity.ok(orderService.getBuyerOrderDetails(buyerId, id));
     }
 
-    /**
-     * GET /api/v1/buyers/orders/{id}/tracking
-     * Get order tracking info
-     */
-    @GetMapping("/orders/{id}/tracking")
-    @PreAuthorize("hasRole('BUYER')")
-    public ResponseEntity<Map<String, Object>> getBuyerOrderTracking(@PathVariable UUID id) {
-        UUID buyerId = getCurrentUserId();
-        return ResponseEntity.ok(orderService.getBuyerOrderTracking(buyerId, id));
-    }
+    // Removed getBuyerOrderTracking to prevent ambiguity with BuyerOrderTrackingController
 
     /**
      * GET /api/v1/buyers/rfqs

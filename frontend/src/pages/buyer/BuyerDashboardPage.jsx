@@ -107,7 +107,7 @@ const BuyerDashboardPage = () => {
                                 <ResponsiveContainer width="100%" height={300}>
                                     <LineChart data={ordersOverTime}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                                        <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                                         <Tooltip
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -123,7 +123,7 @@ const BuyerDashboardPage = () => {
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={spendingOverTime}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                                        <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                                         <Tooltip
                                             formatter={(value) => formatMoney(value)}
@@ -178,7 +178,7 @@ const BuyerDashboardPage = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-slate-500 text-sm">
-                                                {new Date(order.createdAt).toLocaleDateString()}
+                                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '---'}
                                             </td>
                                         </tr>
                                     ))

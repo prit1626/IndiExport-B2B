@@ -16,6 +16,6 @@ public class AnalyticsOrderSummaryDTO {
     private UUID orderId;
     private String orderNumber;
     private String status;
-    private Long totalAmountPaise;
+    private Long total;
     private Instant createdAt;
 }

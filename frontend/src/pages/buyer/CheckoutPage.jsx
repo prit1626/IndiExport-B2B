@@ -46,7 +46,7 @@ const CheckoutPage = () => {
                     country: formData.country
                 },
                 shippingMode: shippingMode,
-                buyerCurrency: 'INR' // Defaulting to INR for now as it's the base
+                buyerCurrency: formData.country.toUpperCase() === 'INDIA' ? 'INR' : 'USD'
             };
 
             const response = await checkoutApi.createCheckout(payload);

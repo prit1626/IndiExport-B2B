@@ -18,8 +18,9 @@ const OrderTrackingPage = () => {
         const fetchTracking = async () => {
             try {
                 setLoading(true);
-                const { data } = await orderApi.getBuyerOrderTracking(id);
-                setTracking(data);
+                const response = await orderApi.getBuyerOrderTracking(id);
+                // The axios response wrapper is either 'data' containing the DTO or just the DTO depending on interceptors
+                setTracking(response.data || response);
             } catch (err) {
                 // If 404, usually means not shipped yet (or bad ID)
                 if (err.response?.status === 404) {
@@ -58,10 +59,10 @@ const OrderTrackingPage = () => {
                                 Order #{tracking?.orderId?.slice(0, 8) || id?.slice(0, 8) || '...'}
                             </p>
                         </div>
-                        {tracking?.courier && (
+                        {tracking?.courierName && (
                             <div className="text-right">
                                 <p className="text-xs text-slate-500">Shipped via</p>
-                                <p className="font-bold text-slate-900">{tracking.courier}</p>
+                                <p className="font-bold text-slate-900">{tracking.courierName}</p>
                             </div>
                         )}
                     </div>
@@ -79,7 +80,7 @@ const OrderTrackingPage = () => {
                                         {tracking.trackingNumber}
                                     </p>
                                     <p className="text-xs text-slate-400 mt-2">
-                                        Current Status: <span className="font-medium text-slate-700">{tracking.status}</span>
+                                        Current Status: <span className="font-medium text-slate-700">{tracking.currentStatus}</span>
                                     </p>
                                 </div>
 

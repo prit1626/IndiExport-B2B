@@ -64,6 +64,7 @@ const ProductInfoPanel = ({ product }) => {
         try {
             await cartApi.addToCart({ productId: product.id, quantity: product.minQty || 1 });
             toast.success('Added to cart');
+            navigate('/buyer/cart'); // Redirect to cart as requested
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to add to cart');
         } finally {
@@ -114,16 +115,16 @@ const ProductInfoPanel = ({ product }) => {
             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
                 <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-brand-700">
-                        {formatMoney(product.basePriceINRPaise)}
+                        {formatMoney(product.pricePaise || product.basePriceINRPaise)}
                     </span>
                     <span className="text-sm text-slate-500">IND / Unit</span>
                 </div>
 
-                {product.convertedPriceMinor && (
+                {product.convertedPrice && (
                     <div className="mt-1 text-sm text-slate-500">
-                        Approx. {product.currency} {(product.convertedPriceMinor / 100).toFixed(2)}
+                        Approx. {product.convertedPrice.currency} {(product.convertedPrice.convertedPriceMinor / 100).toFixed(2)}
                         <span className="ml-2 text-xs text-slate-400">
-                            (Rate: {product.exchangeRateUsed} as of {product.rateTimestamp ? formatDate(new Date(product.rateTimestamp), 'MMM dd, HH:mm') : ''})
+                            (Rate: {(product.convertedPrice.exchangeRateMicros / 1000000).toFixed(4)} as of {product.convertedPrice.rateTimestamp ? formatDate(new Date(product.convertedPrice.rateTimestamp), 'MMM dd, HH:mm') : ''})
                         </span>
                     </div>
                 )}
@@ -134,7 +135,7 @@ const ProductInfoPanel = ({ product }) => {
                 <SpecItem icon={Package} label="Min Order" value={`${product.minQty} ${product.unit}`} />
                 <SpecItem icon={Truck} label="Lead Time" value={`${product.leadTimeDays} Days`} />
                 <SpecItem icon={Globe} label="Origin" value="India" />
-                <SpecItem icon={ShieldCheck} label="Incoterm" value={product.incoterms} />
+                <SpecItem icon={ShieldCheck} label="Incoterm" value={product.incoterm || product.incoterms} />
             </div>
 
             {/* Seller Info */}

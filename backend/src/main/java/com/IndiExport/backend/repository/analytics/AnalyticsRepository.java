@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Repository
@@ -19,8 +21,8 @@ public class AnalyticsRepository {
     // BUYER ANALYTICS
     // ==========================================
     public BuyerDashboardAnalyticsResponse getBuyerAnalytics(UUID buyerId, Instant from, Instant to) {
-        Timestamp fromTs = Timestamp.from(from);
-        Timestamp toTs = Timestamp.from(to);
+        LocalDateTime fromLdt = LocalDateTime.ofInstant(from, ZoneId.systemDefault());
+        LocalDateTime toLdt = LocalDateTime.ofInstant(to, ZoneId.systemDefault());
 
         // 1. Basic aggregates
         String sql = """
@@ -35,31 +37,30 @@ public class AnalyticsRepository {
             AND status != 'CANCELLED'
         """;
 
-        Map<String, Object> stats = jdbcTemplate.queryForMap(sql, buyerId, fromTs, toTs);
+        Map<String, Object> stats = jdbcTemplate.queryForMap(sql, buyerId, fromLdt, toLdt);
 
-        // Sub-query for buyer currency spending
-        String currencySql = """
-            SELECT ocs.buyer_currency, COALESCE(SUM(ocs.converted_total_minor), 0) as total_minor
-            FROM order_currency_snapshot ocs
-            JOIN orders o ON o.id = ocs.order_id
-            WHERE o.buyer_id = ? AND o.created_at BETWEEN ? AND ? AND o.status != 'CANCELLED'
-            GROUP BY ocs.buyer_currency
-            ORDER BY total_minor DESC
-            LIMIT 1
+        // 2. Orders & Spending Over Time (PostgreSQL)
+        String trendSql = """
+            SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as date, 
+                   COUNT(*) as count, 
+                   COALESCE(SUM(total_amount_paise), 0) as amount
+            FROM orders
+            WHERE buyer_id = ? AND created_at BETWEEN ? AND ? AND status != 'CANCELLED'
+            GROUP BY date
+            ORDER BY date ASC
         """;
         
-        String buyerCurrencyCode = "USD"; // Default
-        Long totalSpendingMinor = 0L;
+        List<ChartPointResponse> ordersOverTime = new ArrayList<>();
+        List<ChartPointResponse> spendingOverTime = new ArrayList<>();
         
-        try {
-            Map<String, Object> currencyStats = jdbcTemplate.queryForMap(currencySql, buyerId, fromTs, toTs);
-            buyerCurrencyCode = (String) currencyStats.get("buyer_currency");
-            totalSpendingMinor = ((Number) currencyStats.get("total_minor")).longValue();
-        } catch (Exception e) {
-            // No results or error, keep defaults
-        }
+        jdbcTemplate.query(trendSql, (rs, rowNum) -> {
+            String date = rs.getString("date");
+            ordersOverTime.add(new ChartPointResponse(date, rs.getLong("count")));
+            spendingOverTime.add(new ChartPointResponse(date, rs.getLong("amount")));
+            return null;
+        }, buyerId, fromLdt, toLdt);
 
-        // 2. Last 5 orders
+        // 3. Last 5 orders
         String lastOrdersSql = """
             SELECT id, order_number, status, total_amount_paise, created_at
             FROM orders
@@ -72,7 +73,7 @@ public class AnalyticsRepository {
                 .orderId(UUID.fromString(rs.getString("id")))
                 .orderNumber(rs.getString("order_number"))
                 .status(rs.getString("status"))
-                .totalAmountPaise(rs.getLong("total_amount_paise"))
+                .total(rs.getLong("total_amount_paise"))
                 .createdAt(rs.getTimestamp("created_at").toInstant())
                 .build(),
                 buyerId
@@ -82,10 +83,10 @@ public class AnalyticsRepository {
                 .totalOrders(((Number) stats.get("total_orders")).longValue())
                 .activeShipmentsCount(((Number) stats.get("active_shipments")).longValue())
                 .completedOrders(((Number) stats.get("completed_orders")).longValue())
-                .totalSpendingINRPaise(((Number) stats.get("total_spending")).longValue())
-                .totalSpendingBuyerCurrencyMinor(totalSpendingMinor)
-                .buyerCurrencyCode(buyerCurrencyCode)
-                .lastOrdersSummary(lastOrders)
+                .totalSpending(((Number) stats.get("total_spending")).longValue())
+                .ordersOverTime(ordersOverTime)
+                .spendingOverTime(spendingOverTime)
+                .lastOrders(lastOrders)
                 .build();
     }
 
@@ -106,7 +107,10 @@ public class AnalyticsRepository {
             AND status != 'CANCELLED'
         """;
 
-        Map<String, Object> stats = jdbcTemplate.queryForMap(sql, sellerId, Timestamp.from(from), Timestamp.from(to));
+        LocalDateTime fromLdt = LocalDateTime.ofInstant(from, ZoneId.systemDefault());
+        LocalDateTime toLdt = LocalDateTime.ofInstant(to, ZoneId.systemDefault());
+
+        Map<String, Object> stats = jdbcTemplate.queryForMap(sql, sellerId, fromLdt, toLdt);
 
         // Payouts (assuming logic based on order status or separate payout table if it existed)
         // For now, mapping 'COMPLETED' as released, others as holding
@@ -117,7 +121,36 @@ public class AnalyticsRepository {
              FROM orders
              WHERE seller_id = ? AND created_at BETWEEN ? AND ?
         """;
-        Map<String, Object> payoutStats = jdbcTemplate.queryForMap(payoutSql, sellerId, Timestamp.from(from), Timestamp.from(to));
+        Map<String, Object> payoutStats = jdbcTemplate.queryForMap(payoutSql, sellerId, fromLdt, toLdt);
+
+        // 2. Revenue Trend
+        String trendSql = """
+            SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as date, COALESCE(SUM(total_amount_paise), 0) as amount
+            FROM orders
+            WHERE seller_id = ? AND created_at BETWEEN ? AND ? AND status != 'CANCELLED'
+            GROUP BY date
+            ORDER BY date ASC
+        """;
+        List<RevenueTrendDTO> trend = jdbcTemplate.query(trendSql, (rs, rowNum) -> RevenueTrendDTO.builder()
+                .date(rs.getString("date"))
+                .amount(rs.getLong("amount"))
+                .build(),
+                sellerId, fromLdt, toLdt
+        );
+
+        // 3. Orders by Status
+        String statusSql = """
+            SELECT status as name, COUNT(*) as count
+            FROM orders
+            WHERE seller_id = ? AND created_at BETWEEN ? AND ?
+            GROUP BY status
+        """;
+        List<StatusCountDTO> statusCounts = jdbcTemplate.query(statusSql, (rs, rowNum) -> StatusCountDTO.builder()
+                .name(rs.getString("name"))
+                .count(rs.getLong("count"))
+                .build(),
+                sellerId, fromLdt, toLdt
+        );
 
         return SellerDashboardAnalyticsResponse.builder()
                 .totalSalesCount(((Number) stats.get("total_sales")).longValue())
@@ -127,6 +160,8 @@ public class AnalyticsRepository {
                 .deliveredOrdersCount(((Number) stats.get("delivered_orders")).longValue())
                 .payoutHoldingCount(((Number) payoutStats.get("holding")).longValue())
                 .payoutReleasedCount(((Number) payoutStats.get("released")).longValue())
+                .revenueOverTime(trend)
+                .ordersByStatus(statusCounts)
                 .build();
     }
 
@@ -142,7 +177,9 @@ public class AnalyticsRepository {
             WHERE created_at BETWEEN ? AND ?
             AND status != 'CANCELLED'
         """;
-        Map<String, Object> orderStats = jdbcTemplate.queryForMap(sql, Timestamp.from(from), Timestamp.from(to));
+        LocalDateTime fromLdt = LocalDateTime.ofInstant(from, ZoneId.systemDefault());
+        LocalDateTime toLdt = LocalDateTime.ofInstant(to, ZoneId.systemDefault());
+        Map<String, Object> orderStats = jdbcTemplate.queryForMap(sql, fromLdt, toLdt);
 
         String userSql = """
              SELECT 
@@ -153,13 +190,17 @@ public class AnalyticsRepository {
              JOIN roles r ON ur.role_id = r.id
              WHERE u.created_at BETWEEN ? AND ?
         """;
-        Map<String, Object> userStats = jdbcTemplate.queryForMap(userSql, Timestamp.from(from), Timestamp.from(to));
+        Map<String, Object> userStats = jdbcTemplate.queryForMap(userSql, fromLdt, toLdt);
 
          String disputeSql = """
              SELECT COUNT(*) FROM disputes 
              WHERE created_at BETWEEN ? AND ? AND status = 'OPEN'
         """;
-        Long disputesOpen = jdbcTemplate.queryForObject(disputeSql, Long.class, Timestamp.from(from), Timestamp.from(to));
+        Long disputesOpen = jdbcTemplate.queryForObject(disputeSql, Long.class, fromLdt, toLdt);
+        
+        // ...
+        
+        // Error in TargetContent above, let's fix
 
         // Top Countries
         String countrySql = """
@@ -176,7 +217,7 @@ public class AnalyticsRepository {
                 .orders(rs.getLong("count"))
                 .revenueINRPaise(rs.getLong("revenue"))
                 .build(),
-                Timestamp.from(from), Timestamp.from(to)
+                fromLdt, toLdt
         );
 
         // Orders Trend
@@ -191,7 +232,7 @@ public class AnalyticsRepository {
                 .period(rs.getString("date"))
                 .value(rs.getLong("count"))
                 .build(),
-                Timestamp.from(from), Timestamp.from(to)
+                fromLdt, toLdt
         );
 
         // Disputes Trend
@@ -206,7 +247,7 @@ public class AnalyticsRepository {
                 .period(rs.getString("date"))
                 .value(rs.getLong("count"))
                 .build(),
-                Timestamp.from(from), Timestamp.from(to)
+                fromLdt, toLdt
         );
 
         long gmv = ((Number) orderStats.get("gmv")).longValue();
@@ -227,8 +268,8 @@ public class AnalyticsRepository {
     // ADVANCED SELLER ANALYTICS
     // ==========================================
     public AdvancedSellerAnalyticsResponse getAdvancedSellerAnalytics(UUID sellerId, Instant from, Instant to) {
-        Timestamp fromTs = Timestamp.from(from);
-        Timestamp toTs = Timestamp.from(to);
+        LocalDateTime fromLdt = LocalDateTime.ofInstant(from, ZoneId.systemDefault());
+        LocalDateTime toLdt = LocalDateTime.ofInstant(to, ZoneId.systemDefault());
 
         // 1. Monthly Revenue Chart
         String chartSql = """
@@ -238,11 +279,12 @@ public class AnalyticsRepository {
             GROUP BY period
             ORDER BY period ASC
         """;
+
         List<ChartPointResponse> revenueChart = jdbcTemplate.query(chartSql, (rs, rowNum) -> ChartPointResponse.builder()
                 .period(rs.getString("period"))
                 .value(rs.getLong("revenue"))
                 .build(),
-                sellerId, fromTs, toTs
+                sellerId, fromLdt, toLdt
         );
 
         // 2. Sales by Country
@@ -258,7 +300,7 @@ public class AnalyticsRepository {
                 .orders(rs.getLong("count"))
                 .revenueINRPaise(rs.getLong("revenue"))
                 .build(),
-                sellerId, fromTs, toTs
+                sellerId, fromLdt, toLdt
         );
 
         // 3. Avg Order Value
@@ -267,7 +309,7 @@ public class AnalyticsRepository {
             FROM orders
             WHERE seller_id = ? AND created_at BETWEEN ? AND ? AND status != 'CANCELLED'
         """;
-        Long avgOrderValue = jdbcTemplate.queryForObject(avgSql, Long.class, sellerId, fromTs, toTs);
+        Long avgOrderValue = jdbcTemplate.queryForObject(avgSql, Long.class, sellerId, fromLdt, toLdt);
 
         // 4. Top Products
         String productsSql = """
@@ -285,15 +327,15 @@ public class AnalyticsRepository {
                 .orders(rs.getLong("count"))
                 .revenueINRPaise(rs.getLong("revenue"))
                 .build(),
-                sellerId, fromTs, toTs
+                sellerId, fromLdt, toLdt
         );
         
         // 5. Product Views (Conversion)
         String viewsSql = "SELECT COUNT(*) FROM product_views pv JOIN products p ON p.id = pv.product_id WHERE p.seller_id = ? AND pv.viewed_at BETWEEN ? AND ?";
-        Long totalViews = jdbcTemplate.queryForObject(viewsSql, Long.class, sellerId, fromTs, toTs);
+        Long totalViews = jdbcTemplate.queryForObject(viewsSql, Long.class, sellerId, fromLdt, toLdt);
         
         String ordersSql = "SELECT COUNT(*) FROM orders WHERE seller_id = ? AND created_at BETWEEN ? AND ? AND status != 'CANCELLED'";
-        Long totalOrders = jdbcTemplate.queryForObject(ordersSql, Long.class, sellerId, fromTs, toTs);
+        Long totalOrders = jdbcTemplate.queryForObject(ordersSql, Long.class, sellerId, fromLdt, toLdt);
         
         Double conversionRate = (totalViews != null && totalViews > 0) ? (double) totalOrders / totalViews * 100.0 : 0.0;
         

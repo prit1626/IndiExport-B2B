@@ -40,6 +40,19 @@ public class SellerOrderTrackingController {
     }
 
     /**
+     * PUT /api/v1/seller/orders/{orderId}/tracking
+     * Update tracking info for an order.
+     */
+    @PutMapping("/{orderId}/tracking")
+    public ResponseEntity<TrackingDto.TrackingResponse> updateTracking(
+            @PathVariable UUID orderId,
+            @Valid @RequestBody TrackingDto.CreateRequest request) {
+        UUID userId = getCurrentUserId();
+        TrackingDto.TrackingResponse response = trackingService.updateTracking(userId, orderId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * POST /api/v1/seller/orders/{orderId}/tracking/events
      * Add a tracking event (status update).
      */

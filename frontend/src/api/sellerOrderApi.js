@@ -13,11 +13,20 @@ const sellerOrderApi = {
         return await axiosClient.get(`/sellers/orders/${orderId}`);
     },
 
-    // Upload tracking info
-    // URL: /api/v1/seller/orders/{orderId}/tracking (Note: singular 'seller' in controller)
+    // Update order status
+    sellerUpdateOrderStatus: async (orderId, status) => {
+        return await axiosClient.put(`/sellers/orders/${orderId}/status`, { status });
+    },
+
+    // Upload new tracking info
+    // URL: /api/v1/seller/orders/{orderId}/tracking
     sellerUploadTracking: async (orderId, data) => {
-        // data: { courier, trackingNumber, ... }
         return await axiosClient.post(`/seller/orders/${orderId}/tracking`, data);
+    },
+
+    // Update existing tracking info
+    sellerUpdateTracking: async (orderId, data) => {
+        return await axiosClient.put(`/seller/orders/${orderId}/tracking`, data);
     },
 
     // Add tracking event

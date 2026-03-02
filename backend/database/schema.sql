@@ -118,9 +118,12 @@ CREATE TYPE chat_type_enum AS ENUM ('RFQ_NEGOTIATION', 'PRODUCT_INQUIRY');
 CREATE TYPE order_status_enum AS ENUM (
     'PENDING_CONFIRMATION',
     'CONFIRMED',
+    'PAID',
+    'READY_TO_SHIP',
     'SHIPPED',
     'IN_TRANSIT',
     'DELIVERED',
+    'COMPLETED',
     'CANCELLED',
     'RETURNED'
 );
@@ -132,8 +135,14 @@ CREATE TYPE payment_status_enum AS ENUM (
     'COMPLETED',
     'FAILED',
     'REFUNDED',
-    'DISPUTED'
+    'DISPUTED',
+    'CREATED',
+    'PAID',
+    'CAPTURED',
+    'HOLDING',
+    'RELEASED'
 );
+
 
 CREATE TYPE dispute_status_enum AS ENUM (
     'OPEN',

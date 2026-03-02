@@ -25,7 +25,7 @@ const adminApi = {
         return axiosClient.get('/terms');
     },
     acceptTerms: (versionId) => {
-        return axiosClient.post('/terms/accept', { versionId });
+        return axiosClient.post('/terms/accept', { termsVersionId: versionId });
     },
 
     // User Management (Admin)

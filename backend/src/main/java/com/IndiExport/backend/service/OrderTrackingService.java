@@ -83,6 +83,45 @@ public class OrderTrackingService {
     }
 
     // ─────────────────────────────────────────────
+    // Seller: Update Tracking
+    // ─────────────────────────────────────────────
+
+    @Transactional
+    public TrackingDto.TrackingResponse updateTracking(UUID sellerUserId, UUID orderId,
+                                                       TrackingDto.CreateRequest request) {
+        SellerProfile seller = sellerProfileRepository.findByUserId(sellerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("SellerProfile", sellerUserId.toString()));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId.toString()));
+
+        if (!order.getSeller().getId().equals(seller.getId())) {
+            throw new TrackingAccessDeniedException();
+        }
+
+        OrderTracking tracking = trackingRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new TrackingNotFoundException(orderId.toString()));
+
+        tracking.setCourierName(request.getCourierName());
+        tracking.setTrackingNumber(request.getTrackingNumber());
+        tracking.setTrackingUrl(request.getTrackingUrl());
+        tracking.setShippedAt(request.getShippedAt());
+
+        OrderTracking saved = trackingRepository.save(tracking);
+
+        // Add a status update event
+        OrderTrackingEvent updateEvent = new OrderTrackingEvent();
+        updateEvent.setTracking(saved);
+        updateEvent.setStatus(tracking.getCurrentStatus());
+        updateEvent.setMessage("Tracking details updated: " + request.getCourierName() + " - " + request.getTrackingNumber());
+        updateEvent.setEventTime(Instant.now());
+        eventRepository.save(updateEvent);
+
+        List<OrderTrackingEvent> events = eventRepository.findByTrackingIdOrderByEventTimeDesc(tracking.getId());
+        return mapToResponse(saved, events);
+    }
+
+    // ─────────────────────────────────────────────
     // Seller: Add Tracking Event
     // ─────────────────────────────────────────────
 

@@ -7,9 +7,11 @@ import OrderItemsTable from '../../components/orders/OrderItemsTable';
 import TotalsCard from '../../components/orders/TotalsCard';
 import OrderDetailsSkeleton from '../../components/orders/OrderDetailsSkeleton'; // Reuse buyer skeleton
 import OrdersErrorState from '../../components/orders/OrdersErrorState';
+import InvoiceButtons from '../../components/orders/InvoiceButtons';
 import TrackingUploadModal from '../../components/sellerOrders/TrackingUploadModal';
 import { formatShortDate, formatTime } from '../../utils/formatDate';
-import { MapPin, Phone, Mail, Truck, ArrowLeft, Package, User } from 'lucide-react';
+import { MapPin, Phone, Mail, Truck, ArrowLeft, Package, User, Loader2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const SellerOrderDetailsPage = () => {
     const { id } = useParams();
@@ -20,15 +22,34 @@ const SellerOrderDetailsPage = () => {
     const [error, setError] = useState(null);
     const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
     const [trackingInfo, setTrackingInfo] = useState(null);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
+
+    const handleUpdateStatus = async (newStatus) => {
+        try {
+            setUpdatingStatus(true);
+            await sellerOrderApi.sellerUpdateOrderStatus(id, newStatus);
+            toast.success(`Order marked as ${newStatus}`);
+            fetchOrder();
+        } catch (err) {
+            console.error("Failed to update status:", err);
+            toast.error(err.response?.data?.message || "Failed to update order status");
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
 
     const fetchOrder = async () => {
         try {
             setLoading(true);
-            const { data } = await sellerOrderApi.sellerGetOrderById(id);
-            setOrder(data);
+            const response = await sellerOrderApi.sellerGetOrderById(id);
+            let orderData = response.data || response;
+            if (orderData && orderData.data && !orderData.items) {
+                orderData = orderData.data;
+            }
+            setOrder(orderData);
 
             // Try fetch tracking if status implies it exists
-            if (['SHIPPED', 'IN_TRANSIT', 'DELIVERED'].includes(data.status)) {
+            if (['SHIPPED', 'IN_TRANSIT', 'DELIVERED'].includes(orderData?.status)) {
                 try {
                     const trackRes = await sellerOrderApi.sellerGetTracking(id);
                     setTrackingInfo(trackRes.data);
@@ -69,7 +90,7 @@ const SellerOrderDetailsPage = () => {
 
     const shippingAddress = order.shippingAddress || {}; // Fallback
 
-    const canUploadTracking = ['PAID', 'PROCESSING', 'SHIPPED', 'IN_TRANSIT'].includes(order.status);
+    const canUploadTracking = ['PAID', 'READY_TO_SHIP', 'PROCESSING', 'SHIPPED', 'IN_TRANSIT'].includes(order.status);
 
     return (
         <div className="min-h-screen bg-slate-50 py-8">
@@ -92,16 +113,41 @@ const SellerOrderDetailsPage = () => {
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
-                        {canUploadTracking && (
-                            <button
-                                onClick={() => setIsTrackingModalOpen(true)}
-                                className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 transition-shadow shadow-sm active:scale-95"
-                            >
-                                <Truck size={18} />
-                                {trackingInfo ? 'Update Tracking' : 'Upload Tracking'}
-                            </button>
-                        )}
+                    <div className="flex flex-col gap-3 items-end">
+                        <div className="flex gap-3">
+                            {order.status === 'PAID' && (
+                                <button
+                                    onClick={() => handleUpdateStatus('READY_TO_SHIP')}
+                                    disabled={updatingStatus}
+                                    className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-900 transition-shadow shadow-sm active:scale-95 disabled:opacity-50"
+                                >
+                                    {updatingStatus ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
+                                    Mark Ready
+                                </button>
+                            )}
+                            {['SHIPPED', 'IN_TRANSIT'].includes(order.status) && (
+                                <button
+                                    onClick={() => handleUpdateStatus('DELIVERED')}
+                                    disabled={updatingStatus}
+                                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-shadow shadow-sm active:scale-95 disabled:opacity-50"
+                                >
+                                    {updatingStatus ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
+                                    Mark Delivered
+                                </button>
+                            )}
+                            {canUploadTracking && (
+                                <button
+                                    onClick={() => setIsTrackingModalOpen(true)}
+                                    className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 transition-shadow shadow-sm active:scale-95"
+                                >
+                                    <Truck size={18} />
+                                    {trackingInfo ? 'Update Tracking' : 'Upload Tracking'}
+                                </button>
+                            )}
+                        </div>
+                        {order.status === 'DELIVERED' || order.status === 'COMPLETED' ? (
+                            <InvoiceButtons order={order} />
+                        ) : null}
                     </div>
                 </div>
 
@@ -119,7 +165,10 @@ const SellerOrderDetailsPage = () => {
                                 <span className="text-sm text-slate-500">{order.itemCount} items</span>
                             </div>
                             <div className="p-6">
-                                <OrderItemsTable items={order.items || []} currency={order.currency} />
+                                <OrderItemsTable
+                                    items={order.items || []}
+                                    currency={order.currencySnapshot?.buyerCurrency || 'INR'}
+                                />
                             </div>
                         </div>
 
@@ -133,7 +182,7 @@ const SellerOrderDetailsPage = () => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                     <div>
                                         <p className="text-blue-500 text-xs uppercase font-medium">Courier</p>
-                                        <p className="text-blue-900 font-medium">{trackingInfo.courier}</p>
+                                        <p className="text-blue-900 font-medium">{trackingInfo.courierName || trackingInfo.courier}</p>
                                     </div>
                                     <div>
                                         <p className="text-blue-500 text-xs uppercase font-medium">Tracking Number</p>
@@ -141,7 +190,7 @@ const SellerOrderDetailsPage = () => {
                                     </div>
                                     <div className="col-span-2">
                                         <p className="text-blue-500 text-xs uppercase font-medium">Status</p>
-                                        <p className="text-blue-900">{trackingInfo.status}</p>
+                                        <p className="text-blue-900">{trackingInfo.currentStatus || trackingInfo.status}</p>
                                     </div>
                                 </div>
                             </div>
@@ -182,11 +231,14 @@ const SellerOrderDetailsPage = () => {
 
                     {/* Right Column: Totals & Timeline */}
                     <div className="space-y-6">
-                        <TotalsCard totals={order.totals} currency={order.currency} />
-                        <OrderTimeline status={order.status} createdAt={order.createdAt} />
+                        <TotalsCard
+                            totals={order.totals}
+                            currencySnapshot={order.currencySnapshot}
+                        />
+                        <OrderTimeline currentStatus={order.status} createdAt={order.createdAt} />
                     </div>
                 </div>
-            </div>
+            </div >
 
             <TrackingUploadModal
                 isOpen={isTrackingModalOpen}
@@ -195,7 +247,7 @@ const SellerOrderDetailsPage = () => {
                 onSuccess={handleTrackingSuccess}
                 existingTracking={trackingInfo}
             />
-        </div>
+        </div >
     );
 };
 
