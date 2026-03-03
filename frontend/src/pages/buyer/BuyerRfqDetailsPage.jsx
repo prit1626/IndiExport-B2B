@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, CheckCircle, Star, Shield, Clock, Package, Globe,
-    TrendingDown, Loader2, AlertTriangle, ChevronDown, ChevronUp, XCircle
+    TrendingDown, Loader2, AlertTriangle, ChevronDown, ChevronUp, XCircle, MessageSquare
 } from 'lucide-react';
 import rfqApi from '../../api/rfqApi';
 import toast from 'react-hot-toast';
@@ -119,11 +119,20 @@ export default function BuyerRfqDetailsPage() {
                             <h1 className="text-2xl font-bold text-slate-900">{rfq.title}</h1>
                         </div>
                     </div>
-                    {canFinalize && (
-                        <button onClick={handleCancel} disabled={cancelling} className="text-sm text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors">
-                            <XCircle size={16} /> {cancelling ? 'Cancelling...' : 'Cancel RFQ'}
+                    <div className="flex flex-col items-end gap-2">
+                        <button
+                            onClick={() => navigate('/buyer/rfq-chats')}
+                            className="text-sm bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all hover:shadow-md"
+                        >
+                            <MessageSquare size={16} className="text-brand-600" />
+                            View Negotiations
                         </button>
-                    )}
+                        {canFinalize && (
+                            <button onClick={handleCancel} disabled={cancelling} className="text-sm text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors">
+                                <XCircle size={14} /> {cancelling ? 'Cancelling...' : 'Cancel RFQ'}
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* RFQ Summary Card */}
@@ -196,9 +205,9 @@ export default function BuyerRfqDetailsPage() {
                                         transition={{ delay: i * 0.05 }}
                                         onClick={() => canFinalize && quote.status === 'ACTIVE' && setSelectedQuoteId(quote.id)}
                                         className={`bg-white rounded-2xl border-2 p-5 transition-all ${isAccepted ? 'border-emerald-400 bg-emerald-50/30' :
-                                                isSelected ? 'border-brand-500 shadow-md shadow-brand-100' :
-                                                    canFinalize && quote.status === 'ACTIVE' ? 'border-slate-200 hover:border-brand-300 cursor-pointer' :
-                                                        'border-slate-200'
+                                            isSelected ? 'border-brand-500 shadow-md shadow-brand-100' :
+                                                canFinalize && quote.status === 'ACTIVE' ? 'border-slate-200 hover:border-brand-300 cursor-pointer' :
+                                                    'border-slate-200'
                                             }`}
                                     >
                                         <div className="flex items-start justify-between gap-4">

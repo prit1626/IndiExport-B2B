@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import rfqApi from '../../api/rfqApi';
+import rfqChatApi from '../../api/rfqChatApi';
 import RfqDetailsSkeleton from '../../components/rfq/RfqDetailsSkeleton';
 import RfqMediaGallery from '../../components/rfq/RfqMediaGallery';
 import QuoteModal from '../../components/rfq/QuoteModal';
-import { ArrowLeft, Clock, MapPin, Package, User, CheckCircle2, AlertOctagon } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Package, User, MessageSquare, AlertOctagon, Loader2 } from 'lucide-react';
 import { formatShortDate } from '../../utils/formatDate';
 import toast from 'react-hot-toast';
 
@@ -15,7 +16,8 @@ const SellerRfqDetailsPage = () => {
     const [rfq, setRfq] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-    const [quoted, setQuoted] = useState(false); // Can track if already quoted in session or via backend status if available
+    const [quoted, setQuoted] = useState(false);
+    const [startingChat, setStartingChat] = useState(false);
 
     const fetchRfq = async () => {
         try {
@@ -28,6 +30,19 @@ const SellerRfqDetailsPage = () => {
             navigate('/seller/rfq');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleStartChat = async () => {
+        try {
+            setStartingChat(true);
+            const { data } = await rfqChatApi.sellerStartRfqChat(rfq.id);
+            navigate(`/seller/rfq-chats/${data.chatId}`);
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Failed to open chat');
+        } finally {
+            setStartingChat(false);
         }
     };
 
@@ -106,12 +121,22 @@ const SellerRfqDetailsPage = () => {
                             )}
 
                             {isOpen ? (
-                                <button
-                                    onClick={() => setIsQuoteModalOpen(true)}
-                                    className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all active:scale-95"
-                                >
-                                    Submit Quote Now
-                                </button>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setIsQuoteModalOpen(true)}
+                                        className="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
+                                    >
+                                        Submit Quote Directly
+                                    </button>
+                                    <button
+                                        onClick={handleStartChat}
+                                        disabled={startingChat}
+                                        className="w-full bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-3 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        {startingChat ? <Loader2 size={18} className="animate-spin" /> : <MessageSquare size={18} />}
+                                        Negotiate in Chat
+                                    </button>
+                                </div>
                             ) : (
                                 <div className="w-full bg-slate-100 text-slate-500 font-medium py-3 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed">
                                     <AlertOctagon size={18} />

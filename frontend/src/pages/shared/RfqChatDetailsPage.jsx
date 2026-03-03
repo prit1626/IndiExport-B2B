@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import rfqChatApi from '../../api/rfqChatApi';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 // Components
 import RfqChatShell from '../../components/rfqChat/RfqChatShell';
@@ -10,6 +12,7 @@ import RfqChatListItem from '../../components/rfqChat/RfqChatListItem';
 import RfqChatHeader from '../../components/rfqChat/RfqChatHeader';
 import RfqMessageList from '../../components/rfqChat/RfqMessageList';
 import RfqComposer from '../../components/rfqChat/RfqComposer';
+import PriceProposalModal from '../../components/rfqChat/PriceProposalModal';
 import { Loader2, MessageSquareOff } from 'lucide-react';
 
 const RfqChatDetailsPage = () => {
@@ -30,8 +33,9 @@ const RfqChatDetailsPage = () => {
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [showProposalModal, setShowProposalModal] = useState(false);
 
-    const pollingInterval = useRef(null);
+    const stompClient = useRef(null);
 
     // 1. Fetch Chat List
     useEffect(() => {
@@ -60,42 +64,54 @@ const RfqChatDetailsPage = () => {
         setHasMore(true);
 
         fetchMessages(0, true);
-        startPolling();
+        connectWebSocket();
 
-        return () => stopPolling();
+        return () => {
+            if (stompClient.current) {
+                stompClient.current.deactivate();
+            }
+        };
     }, [chatId]);
 
-    const startPolling = () => {
-        stopPolling();
-        pollingInterval.current = setInterval(async () => {
-            if (document.hidden) return;
-            try {
-                const { data } = await rfqChatApi.getRfqChatMessages(chatId, { page: 0, size: 20 });
-                if (data.content) {
-                    setMessages(prev => {
-                        const existingIds = new Set(prev.map(m => m.id));
-                        const newMsgs = data.content.filter(m => !existingIds.has(m.id));
-                        if (newMsgs.length === 0) return prev;
-                        // Assuming new messages come from top (newest), we append them? 
-                        // No. MessageList renders [Oldest -> Newest]. 
-                        // Backend returns Page 0 (Newest). 
-                        // If we verify timestamps, we should just merge and re-sort or append unique if we know they are newer.
-                        // Simplified: Append unique messages that are *newer* than latest.
-                        // Actually, simplified merge:
-                        const combined = [...prev, ...newMsgs];
-                        // Sort by createdAt ASC just in case
-                        return combined.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-                    });
-                }
-            } catch (e) {
-                // silent
-            }
-        }, 5000);
+    const connectWebSocket = () => {
+        if (stompClient.current) {
+            stompClient.current.deactivate();
+        }
+
+        const token = useAuthStore.getState().token;
+        if (!token) return;
+
+        const client = new Client({
+            webSocketFactory: () => new SockJS(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'}/ws`),
+            connectHeaders: { Authorization: `Bearer ${token}` },
+            reconnectDelay: 5000,
+            onConnect: () => {
+                client.subscribe(`/topic/rfq-chat/${chatId}`, (message) => {
+                    const parsed = JSON.parse(message.body);
+
+                    if (parsed.event === 'NEW_MESSAGE' || parsed.event === 'PRICE_PROPOSAL' || parsed.event === 'SYSTEM_EVENT') {
+                        setMessages(prev => {
+                            // Filter dedup in case of concurrent REST fetch
+                            if (prev.some(m => m.id === parsed.data.id)) return prev;
+                            return [...prev, parsed.data].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                        });
+                    } else if (parsed.event === 'PROPOSAL_ACCEPTED') {
+                        // Wait briefly for toast to show, then redirect
+                        setTimeout(() => navigate(`/buyer/orders/${parsed.orderId}/pay`), 1500);
+                    }
+                });
+
+                // Mark chat as read upon connecting
+                rfqChatApi.markRfqChatRead(chatId).catch(() => { });
+            },
+            onStompError: (frame) => console.error('Broker reported error:', frame.headers['message'])
+        });
+
+        client.activate();
+        stompClient.current = client;
     };
 
-    const stopPolling = () => {
-        if (pollingInterval.current) clearInterval(pollingInterval.current);
-    };
+
 
     const fetchMessages = async (pageNum, isInitial = false) => {
         try {
@@ -130,10 +146,9 @@ const RfqChatDetailsPage = () => {
 
     const handleSendMessage = async (payload) => {
         try {
-            const { data } = await rfqChatApi.sendRfqChatMessage(chatId, payload);
-            setMessages(prev => [...prev, data]);
-            // Refresh chat list to update preview
-            // (Optional optimization: manually update list state)
+            await rfqChatApi.sendRfqChatMessage(chatId, payload);
+            // Don't modify `setMessages` here — wait for the WebSocket broadcast instead!
+            // This prevents duplicate messages (optimistic vs broadcast).
         } catch (error) {
             throw error;
         }
@@ -170,34 +185,57 @@ const RfqChatDetailsPage = () => {
     );
 
     return (
-        <RfqChatShell
-            isMobileChatOpen={!!chatId} // On mobile, if chatId exists, show content. Else show sidebar.
-            sidebar={Sidebar}
-            content={
-                activeChat ? (
-                    <>
-                        <RfqChatHeader chat={activeChat} onBack={() => navigate(basePath)} />
-                        <RfqMessageList
-                            messages={messages}
-                            currentUserId={user?.id}
-                            loading={loadingMessages}
-                            hasMore={hasMore}
-                            loadingMore={loadingMore}
-                            onLoadMore={() => fetchMessages(page + 1)}
-                        />
-                        <RfqComposer
-                            onSend={handleSendMessage}
-                            onUploadClick={() => toast('Attachment upload pending backend support', { icon: 'ℹ️' })}
-                            onProposalClick={() => toast('Price Proposal UI pending integration', { icon: '🚧' })}
-                        />
-                    </>
-                ) : (
-                    <div className="flex-1 flex items-center justify-center bg-slate-50 text-slate-400">
-                        {loadingChats ? 'Loading...' : 'Select a conversation to start negotiating'}
-                    </div>
-                )
-            }
-        />
+        <>
+            <RfqChatShell
+                isMobileChatOpen={!!chatId} // On mobile, if chatId exists, show content. Else show sidebar.
+                sidebar={Sidebar}
+                content={
+                    activeChat ? (
+                        <>
+                            <RfqChatHeader chat={activeChat} onBack={() => navigate(basePath)} />
+                            <RfqMessageList
+                                messages={messages}
+                                currentUserId={user?.id}
+                                isBuyer={!isSeller}
+                                onProposalAccepted={(orderId) => {
+                                    // The STOMP event will also fire, this is backup
+                                    setTimeout(() => navigate(`/buyer/orders/${orderId}/pay`), 1500);
+                                }}
+                                loading={loadingMessages}
+                                hasMore={hasMore}
+                                loadingMore={loadingMore}
+                                onLoadMore={() => fetchMessages(page + 1)}
+                            />
+                            <RfqComposer
+                                chatId={chatId}
+                                isBuyer={!isSeller}
+                                onSend={handleSendMessage}
+                                onProposalSent={(action) => {
+                                    if (action === 'OPEN_MODAL') {
+                                        setShowProposalModal(true);
+                                    }
+                                }}
+                            />
+                        </>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center bg-slate-50 text-slate-400">
+                            {loadingChats ? 'Loading...' : 'Select a conversation to start negotiating'}
+                        </div>
+                    )
+                }
+            />
+
+            {!isSeller === false && (
+                <PriceProposalModal
+                    isOpen={showProposalModal}
+                    onClose={() => setShowProposalModal(false)}
+                    chatId={chatId}
+                    onProposalSent={() => {
+                        // Chat websockets will handle the rest
+                    }}
+                />
+            )}
+        </>
     );
 };
 

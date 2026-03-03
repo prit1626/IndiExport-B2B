@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Package, Globe, Anchor, DollarSign, Upload, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Package, Globe, Anchor, DollarSign, Upload, Check, Loader2, X, Image as ImageIcon } from 'lucide-react';
 import rfqApi from '../../api/rfqApi';
+import { uploadFile } from '../../api/uploadApi';
 import toast from 'react-hot-toast';
 
 const INCOTERMS = ['EXW', 'FCA', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP', 'FAS', 'FOB', 'CFR', 'CIF'];
-const SHIPPING_MODES = ['OCEAN', 'AIR', 'ROAD', 'RAIL'];
+// Must match backend ShippingMode enum: AIR, SEA, ROAD, COURIER
+const SHIPPING_MODES = [
+    { value: 'SEA', label: 'Sea Freight' },
+    { value: 'AIR', label: 'Air Freight' },
+    { value: 'ROAD', label: 'Road / Land' },
+    { value: 'COURIER', label: 'Courier / Express' },
+];
 const UNITS = ['PCS', 'KG', 'TON', 'MT', 'LTR', 'CBM', 'BOX', 'ROLL'];
 
 const STEPS = [
@@ -23,13 +30,61 @@ export default function BuyerRfqCreatePage() {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [mediaFiles, setMediaFiles] = useState([]); // { file, previewUrl, uploadedUrl }
+    const fileInputRef = useRef();
     const [form, setForm] = useState({
         title: '', details: '', quantity: '', unit: 'PCS',
-        destinationCountry: '', shippingMode: 'OCEAN', incoterm: 'FOB',
+        destinationCountry: '', shippingMode: 'SEA', incoterm: 'FOB',
         targetPriceMinor: '', targetCurrency: 'USD', mediaUrls: [],
     });
 
     const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
+
+    const handleFilePick = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+
+        const oversized = files.find(f => f.size > 10 * 1024 * 1024);
+        if (oversized) { toast.error(`${oversized.name} exceeds 10 MB`); return; }
+        if (mediaFiles.length + files.length > 6) { toast.error('Max 6 files allowed'); return; }
+
+        setUploading(true);
+        setUploadProgress(0);
+        const total = files.length;
+        let done = 0;
+
+        const newEntries = [];
+        for (const file of files) {
+            const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+            try {
+                const url = await uploadFile(file, (pct) => {
+                    setUploadProgress(Math.round(((done + pct / 100) / total) * 100));
+                });
+                newEntries.push({ file, previewUrl, uploadedUrl: url });
+                done++;
+                setUploadProgress(Math.round((done / total) * 100));
+            } catch (err) {
+                toast.error(`Failed to upload ${file.name}`);
+            }
+        }
+
+        setMediaFiles(prev => [...prev, ...newEntries]);
+        setUploading(false);
+        setUploadProgress(0);
+        // Reset input so the same file can be re-selected
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const removeMedia = (idx) => {
+        setMediaFiles(prev => {
+            const next = [...prev];
+            if (next[idx].previewUrl) URL.revokeObjectURL(next[idx].previewUrl);
+            next.splice(idx, 1);
+            return next;
+        });
+    };
 
     const handleSubmit = async () => {
         if (!form.title || !form.quantity || !form.destinationCountry || !form.incoterm) {
@@ -42,6 +97,7 @@ export default function BuyerRfqCreatePage() {
                 ...form,
                 quantity: parseInt(form.quantity),
                 targetPriceMinor: form.targetPriceMinor ? Math.round(parseFloat(form.targetPriceMinor) * 100) : null,
+                mediaUrls: mediaFiles.map(m => m.uploadedUrl).filter(Boolean),
             };
             const res = await rfqApi.createRfq(payload);
             toast.success('RFQ created! Sellers will start quoting soon.');
@@ -73,7 +129,7 @@ export default function BuyerRfqCreatePage() {
                         <React.Fragment key={s.id}>
                             <div
                                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${step === s.id ? 'bg-brand-600 text-white shadow-md shadow-brand-200' :
-                                        step > s.id ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                                    step > s.id ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
                                     }`}
                             >
                                 {step > s.id ? <Check size={16} /> : s.icon}
@@ -132,7 +188,9 @@ export default function BuyerRfqCreatePage() {
                             <div>
                                 <label className={labelCls}>Shipping Mode</label>
                                 <select className={selectCls} value={form.shippingMode} onChange={set('shippingMode')}>
-                                    {SHIPPING_MODES.map(m => <option key={m}>{m}</option>)}
+                                    {SHIPPING_MODES.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div>
@@ -165,10 +223,77 @@ export default function BuyerRfqCreatePage() {
                             <div className="bg-brand-50 rounded-xl p-4 text-sm text-brand-700 border border-brand-100">
                                 <strong>💡 Tip:</strong> Setting a target price helps sellers understand your budget and submit more competitive quotes.
                             </div>
-                            <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-6 text-center cursor-pointer hover:bg-slate-100 transition-colors">
-                                <Upload size={24} className="mx-auto text-slate-400 mb-2" />
-                                <p className="text-sm text-slate-500">Upload product images, spec sheets (optional)</p>
-                                <p className="text-xs text-slate-400 mt-1">Image upload can be added via Cloudinary integration</p>
+                            {/* Media upload */}
+                            <div>
+                                <label className={labelCls}>Product Images / Spec Sheets <span className="text-slate-400 font-normal">(optional, max 6 · 10 MB each)</span></label>
+
+                                {/* Hidden file input */}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                    className="hidden"
+                                    onChange={handleFilePick}
+                                    disabled={uploading}
+                                />
+
+                                {/* Preview grid */}
+                                {mediaFiles.length > 0 && (
+                                    <div className="grid grid-cols-3 gap-2 mb-3">
+                                        {mediaFiles.map((m, i) => (
+                                            <div key={i} className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
+                                                {m.previewUrl ? (
+                                                    <img src={m.previewUrl} alt="preview" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <ImageIcon size={24} className="text-slate-400" />
+                                                        <span className="text-[10px] text-slate-500 mt-1 px-1 text-center truncate">{m.file.name}</span>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeMedia(i)}
+                                                    className="absolute top-1 right-1 bg-black/50 hover:bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                                <div className="absolute bottom-1 left-1 bg-emerald-500 rounded-full w-3 h-3" title="Uploaded" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Upload drop zone / click area */}
+                                <div
+                                    onClick={() => !uploading && fileInputRef.current?.click()}
+                                    className={`border-2 border-dashed rounded-xl p-5 text-center transition-colors ${uploading
+                                            ? 'border-brand-300 bg-brand-50 cursor-wait'
+                                            : 'border-slate-300 hover:bg-slate-50 cursor-pointer'
+                                        }`}
+                                >
+                                    {uploading ? (
+                                        <>
+                                            <Loader2 size={24} className="mx-auto text-brand-500 animate-spin mb-2" />
+                                            <p className="text-sm text-brand-600 font-medium">Uploading… {uploadProgress}%</p>
+                                            <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
+                                                <motion.div
+                                                    className="bg-brand-500 h-full rounded-full"
+                                                    style={{ width: `${uploadProgress}%` }}
+                                                    transition={{ duration: 0.25 }}
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload size={24} className="mx-auto text-slate-400 mb-2" />
+                                            <p className="text-sm text-slate-600 font-medium">
+                                                {mediaFiles.length > 0 ? 'Add more files' : 'Click to upload images or spec sheets'}
+                                            </p>
+                                            <p className="text-xs text-slate-400 mt-1">JPG, PNG, PDF, DOC, XLS · Max 10 MB per file</p>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </>
                     )}

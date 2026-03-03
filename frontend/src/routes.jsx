@@ -33,6 +33,7 @@ import BuyerProfilePage from './pages/buyer/BuyerProfilePage';
 import BuyerRfqListPage from './pages/buyer/BuyerRfqListPage';
 import BuyerRfqCreatePage from './pages/buyer/BuyerRfqCreatePage';
 import BuyerRfqDetailsPage from './pages/buyer/BuyerRfqDetailsPage';
+import RfqChatDetailsPage from './pages/shared/RfqChatDetailsPage';
 
 // Seller Pages
 import SellerDashboardPage from './pages/seller/SellerDashboardPage';
@@ -106,6 +107,8 @@ export const appRoutes = [
             { path: 'rfq', element: <BuyerRfqListPage /> },
             { path: 'rfq/create', element: <BuyerRfqCreatePage /> },
             { path: 'rfq/:rfqId', element: <BuyerRfqDetailsPage /> },
+            { path: 'rfq-chats', element: <RfqChatDetailsPage /> },
+            { path: 'rfq-chats/:chatId', element: <RfqChatDetailsPage /> },
         ]
     },
     {
@@ -128,6 +131,8 @@ export const appRoutes = [
             { path: 'profile', element: <SellerProfilePage /> },
             { path: 'rfq', element: <SellerRfqBrowsePage /> },
             { path: 'rfq/:id', element: <SellerRfqDetailsPage /> },
+            { path: 'rfq-chats', element: <RfqChatDetailsPage /> },
+            { path: 'rfq-chats/:chatId', element: <RfqChatDetailsPage /> },
         ]
     },
     {

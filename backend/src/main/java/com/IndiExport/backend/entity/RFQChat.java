@@ -1,28 +1,28 @@
 package com.IndiExport.backend.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
- * RFQChat entity for messaging between buyer and seller during RFQ negotiation.
- * Tracks negotiation conversation history.
+ * Represents a negotiation chat channel between a buyer and a specific seller for one RFQ.
+ * Unique per (rfq_id, seller_id).
+ * isActive = false means the chat is locked (RFQ finalized / cancelled / expired).
  */
 @Entity
-@Table(name = "rfq_chat", indexes = {
-        @Index(name = "idx_rfq_chat_rfq_id", columnList = "rfq_id"),
-        @Index(name = "idx_rfq_chat_sender_id", columnList = "sender_id"),
-        @Index(name = "idx_rfq_chat_sent_at", columnList = "sent_at")
-})
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(
+    name = "rfq_chats",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uq_rfq_chat_rfq_seller",
+        columnNames = {"rfq_id", "seller_id"}
+    ),
+    indexes = {
+        @Index(name = "idx_rfq_chats_rfq_id",   columnList = "rfq_id"),
+        @Index(name = "idx_rfq_chats_buyer_id",  columnList = "buyer_id"),
+        @Index(name = "idx_rfq_chats_seller_id", columnList = "seller_id")
+    }
+)
 public class RFQChat {
 
     @Id
@@ -33,21 +33,48 @@ public class RFQChat {
     @JoinColumn(name = "rfq_id", nullable = false)
     private RFQ rfq;
 
+    /** The buyer who owns the RFQ. Denormalised here for quick access. */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
-    private User sender;
+    @JoinColumn(name = "buyer_id", nullable = false)
+    private User buyer;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String messageText;
+    /** The seller participating in this negotiation thread. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seller_id", nullable = false)
+    private User seller;
 
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime sentAt = LocalDateTime.now();
+    private boolean active = true;
 
-    @Column(columnDefinition = "TIMESTAMP")
-    private LocalDateTime readAt; // Null until buyer reads seller's message
+    @Column(nullable = false)
+    private Instant createdAt = Instant.now();
 
-    public boolean isRead() {
-        return readAt != null;
-    }
+    /** Set when the chat is locked (RFQ finalized, cancelled, expired). */
+    @Column
+    private Instant closedAt;
+
+    public RFQChat() {}
+
+    // ── Getters / Setters ─────────────────────────────────────────────────
+
+    public UUID getId()             { return id; }
+    public void setId(UUID id)      { this.id = id; }
+
+    public RFQ getRfq()             { return rfq; }
+    public void setRfq(RFQ rfq)     { this.rfq = rfq; }
+
+    public User getBuyer()               { return buyer; }
+    public void setBuyer(User buyer)     { this.buyer = buyer; }
+
+    public User getSeller()              { return seller; }
+    public void setSeller(User seller)   { this.seller = seller; }
+
+    public boolean isActive()            { return active; }
+    public void setActive(boolean a)     { this.active = a; }
+
+    public Instant getCreatedAt()              { return createdAt; }
+    public void setCreatedAt(Instant createdAt){ this.createdAt = createdAt; }
+
+    public Instant getClosedAt()               { return closedAt; }
+    public void setClosedAt(Instant closedAt)  { this.closedAt = closedAt; }
 }
