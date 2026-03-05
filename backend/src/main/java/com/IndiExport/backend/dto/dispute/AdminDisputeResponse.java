@@ -28,7 +28,7 @@ public class AdminDisputeResponse {
     private DisputeStatus status;
     private Instant createdAt;
     private Instant updatedAt;
-    
+
     // Admin specific
     private Instant resolvedAt;
     private UUID resolvedByAdminId;

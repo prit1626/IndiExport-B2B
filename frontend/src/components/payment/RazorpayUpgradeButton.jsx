@@ -21,8 +21,17 @@ const RazorpayUpgradeButton = ({ onUpgradeSuccess }) => {
             // 2. Create Upgrade Payment Order on Backend
             const { data } = await plansApi.initiateUpgrade();
 
-            // Note: Use keyId, amount, etc. from response
-            const { keyId, amount, currency, razorpayOrderId, buyerName, buyerEmail, buyerPhone, notes } = data;
+            // Note: Data is nested in 'razorpay' object, map fields to expected options
+            const { 
+                key: keyId, 
+                amountMinor: amount, 
+                currency, 
+                razorpayOrderId, 
+                buyerName, 
+                buyerEmail, 
+                buyerPhone, 
+                notes 
+            } = data.razorpay;
 
             // 3. Open Razorpay Checkout
             const options = {

@@ -146,11 +146,8 @@ public class RFQChatService {
         msg = messageRepository.save(msg);
 
         // Move RFQ → UNDER_NEGOTIATION if still OPEN
-        RFQ rfq = chat.getRfq();
-        if (rfq.getStatus() == RfqStatus.OPEN) {
-            rfq.setStatus(RfqStatus.UNDER_NEGOTIATION);
-            rfqRepository.save(rfq);
-        }
+        // REMOVED: RFQ remains OPEN to allow independent negotiation channels with
+        // other sellers.
 
         // Post SYSTEM message
         postSystemMessage(chat, "Seller proposed a new price: "
@@ -165,7 +162,8 @@ public class RFQChatService {
     /**
      * Buyer accepts a price proposal message.
      * This trigggers RFQ finalization → Order creation.
-     * Lock: uses RFQ @Version for optimistic locking — concurrent accepts throw OptimisticLockException (mapped to 409).
+     * Lock: uses RFQ @Version for optimistic locking — concurrent accepts throw
+     * OptimisticLockException (mapped to 409).
      */
     @Transactional
     public AcceptProposalResponse acceptProposal(UUID chatId, UUID buyerId, UUID messageId) {
@@ -310,7 +308,8 @@ public class RFQChatService {
 
     private RFQChatMessageResponse toMessageResponse(RFQChatMessage msg) {
         String senderRole = msg.getSender().getId().equals(msg.getChat().getSeller().getId())
-                ? "SELLER" : "BUYER";
+                ? "SELLER"
+                : "BUYER";
         return RFQChatMessageResponse.builder()
                 .id(msg.getId())
                 .chatId(msg.getChat().getId())
@@ -349,7 +348,8 @@ public class RFQChatService {
             if (last.getMessageType() == RFQChatMessageType.PRICE_PROPOSAL) {
                 lastMsgPreview = "💰 Price proposal: " + last.getProposedPriceMinor() + " " + last.getCurrency();
             } else if (last.getMessageType() == RFQChatMessageType.ATTACHMENT) {
-                lastMsgPreview = "📎 " + (last.getAttachmentFileName() != null ? last.getAttachmentFileName() : "Attachment");
+                lastMsgPreview = "📎 "
+                        + (last.getAttachmentFileName() != null ? last.getAttachmentFileName() : "Attachment");
             } else if (last.getMessageType() == RFQChatMessageType.SYSTEM) {
                 lastMsgPreview = "ℹ️ " + last.getMessageText();
             } else {

@@ -62,27 +62,27 @@ public class SecurityConfig {
 
                 // Configure endpoint access
                 .authorizeHttpRequests(authz -> authz
-                    .requestMatchers("/api/v1/auth/signup/**", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
-                    .requestMatchers("/public/**").permitAll()
+                        .requestMatchers("/api/v1/auth/signup/**", "/api/v1/auth/login", "/api/v1/auth/refresh")
+                        .permitAll()
+                        .requestMatchers("/public/**").permitAll()
 
-                    .requestMatchers(HttpMethod.GET, "/api/v1/products").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/v1/currency/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/shipping/quote").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/v1/terms").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/currency/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/shipping/quote").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/terms").permitAll()
 
-                    .requestMatchers("/health", "/health/**").permitAll()
-                    .requestMatchers("/actuator", "/actuator/**").permitAll()
+                        .requestMatchers("/health", "/health/**").permitAll()
+                        .requestMatchers("/actuator", "/actuator/**").permitAll()
+                        .requestMatchers("/api/test-dispute/**").permitAll()
 
-                    .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
 
                 // Exception handling for authentication failures
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
-                        .accessDeniedHandler(new JwtAccessDeniedHandler())
-                );
+                        .accessDeniedHandler(new JwtAccessDeniedHandler()));
 
         // Add JWT filter before UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -97,10 +97,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173",  // Vite dev server
-                "http://localhost:3000",  // Alternative React dev port
-                "http://localhost:8081"   // Local testing
-                // Add production URL when deployed
+                "http://localhost:5173", // Vite dev server
+                "http://localhost:3000", // Alternative React dev port
+                "http://localhost:8081" // Local testing
+        // Add production URL when deployed
         ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(Collections.singletonList("*"));

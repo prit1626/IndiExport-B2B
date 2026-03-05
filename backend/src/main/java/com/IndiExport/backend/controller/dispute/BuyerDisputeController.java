@@ -32,7 +32,7 @@ public class BuyerDisputeController {
     private final com.IndiExport.backend.service.FileStorageService fileStorageService;
     private final com.IndiExport.backend.repository.BuyerProfileRepository buyerProfileRepository;
 
-    @PostMapping(consumes = {"multipart/form-data"})
+    @PostMapping(consumes = { "multipart/form-data" })
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<DisputeResponse> raiseDispute(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -40,9 +40,9 @@ public class BuyerDisputeController {
             @RequestPart("reason") String reason,
             @RequestPart("description") String description,
             @RequestPart(value = "files", required = false) org.springframework.web.multipart.MultipartFile[] files) {
-        
+
         User user = getUser(userDetails);
-        
+
         java.util.List<String> evidenceUrls = new java.util.ArrayList<>();
         if (files != null) {
             for (org.springframework.web.multipart.MultipartFile file : files) {
@@ -72,28 +72,28 @@ public class BuyerDisputeController {
             @RequestParam(required = false) com.IndiExport.backend.entity.DisputeStatus status,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         User user = getUser(userDetails);
-        
+
         return ResponseEntity.ok(disputeService.getDisputesForBuyer(getBuyerId(user), status, pageable));
     }
 
-    @PostMapping(value = "/{disputeId}/evidence", consumes = {"multipart/form-data"})
+    @PostMapping(value = "/{disputeId}/evidence", consumes = { "multipart/form-data" })
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<EvidenceResponse> addEvidence(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable UUID disputeId,
             @RequestPart("file") org.springframework.web.multipart.MultipartFile file) {
         User user = getUser(userDetails);
-        
+
         String url;
         try {
             url = fileStorageService.uploadFile(file, "disputes/evidence");
         } catch (java.io.IOException e) {
             throw new RuntimeException("Failed to upload evidence", e);
         }
-        
+
         return ResponseEntity.ok(disputeService.addEvidence(disputeId, user.getId(), url));
     }
-    
+
     @GetMapping("/{disputeId}")
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<DisputeResponse> getDisputeDetails(
@@ -107,10 +107,10 @@ public class BuyerDisputeController {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
-    
+
     // Quick helper to resolve profile ID. Ideally this logic is in a service.
     // For this implementation, I will inject the repo.
-    
+
     private UUID getBuyerId(User user) {
         return buyerProfileRepository.findByUserId(user.getId())
                 .map(com.IndiExport.backend.entity.BuyerProfile::getId)
