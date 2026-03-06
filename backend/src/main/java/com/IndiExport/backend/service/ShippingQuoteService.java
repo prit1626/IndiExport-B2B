@@ -20,12 +20,12 @@ import java.util.UUID;
 
 /**
  * Orchestrates shipping quote calculation:
- *   1. Try seller-specific template match first (country → zone → fallback)
- *   2. If no template matches, use the global calculator
+ * 1. Try seller-specific template match first (country → zone → fallback)
+ * 2. If no template matches, use the global calculator
  *
  * Supports both:
- *   - Public quote API (no order required)
- *   - Checkout flow (saves ShippingQuote to order)
+ * - Public quote API (no order required)
+ * - Checkout flow (saves ShippingQuote to order)
  */
 @Service
 public class ShippingQuoteService {
@@ -38,9 +38,9 @@ public class ShippingQuoteService {
     private final GlobalShippingCalculatorService globalCalculator;
 
     public ShippingQuoteService(SellerShippingTemplateRepository templateRepository,
-                                  ShippingQuoteRepository shippingQuoteRepository,
-                                  ProductRepository productRepository,
-                                  GlobalShippingCalculatorService globalCalculator) {
+            ShippingQuoteRepository shippingQuoteRepository,
+            ProductRepository productRepository,
+            GlobalShippingCalculatorService globalCalculator) {
         this.templateRepository = templateRepository;
         this.shippingQuoteRepository = shippingQuoteRepository;
         this.productRepository = productRepository;
@@ -88,10 +88,12 @@ public class ShippingQuoteService {
             }
         }
 
-        // Chargeable weight = max(actual, volumetric)
+        // Chargeable weight = max(actual, volumetric). If 0 (e.g., custom order with no
+        // weight), default to 1kg.
         long chargeableWeight = Math.max(totalWeightGrams, totalVolumetricGrams);
         if (chargeableWeight <= 0) {
-            throw new ShippingQuoteFailedException("Chargeable weight must be positive");
+            log.warn("Chargeable weight is <= 0 ({}). Defaulting to 1kg (1000g).", chargeableWeight);
+            chargeableWeight = 1000;
         }
 
         // 2. Try seller template first
@@ -108,8 +110,8 @@ public class ShippingQuoteService {
         }
 
         // 3. Fallback to global calculator
-        GlobalShippingCalculatorService.QuoteResult result =
-                globalCalculator.calculate(mode, country, chargeableWeight);
+        GlobalShippingCalculatorService.QuoteResult result = globalCalculator.calculate(mode, country,
+                chargeableWeight);
 
         ShippingQuoteDto.QuoteResponse response = new ShippingQuoteDto.QuoteResponse();
         response.setShippingCostPaise(result.shippingCostPaise());
@@ -118,7 +120,7 @@ public class ShippingQuoteService {
         response.setEstimatedDeliveryDaysMin(result.deliveryDaysMin());
         response.setEstimatedDeliveryDaysMax(result.deliveryDaysMax());
         response.setQuoteSource("GLOBAL_CALCULATOR");
-        
+
         ShippingQuoteDto.QuoteBreakdown breakdown = new ShippingQuoteDto.QuoteBreakdown();
         breakdown.setBaseCostPaise(result.baseCostPaise());
         breakdown.setWeightChargePaise(result.weightChargePaise());
@@ -126,7 +128,7 @@ public class ShippingQuoteService {
         breakdown.setShippingZone(result.zone());
         breakdown.setZoneMultiplier(result.zoneMultiplier());
         response.setBreakdown(breakdown);
-        
+
         response.setQuotedAt(Instant.now());
         return response;
     }
@@ -141,9 +143,10 @@ public class ShippingQuoteService {
      */
     @Transactional
     public ShippingQuote calculateAndSave(Order order, ShippingMode mode,
-                                           String destinationCountry, long totalWeightGrams) {
+            String destinationCountry, long totalWeightGrams) {
         if (totalWeightGrams <= 0) {
-            throw new ShippingQuoteFailedException("Total weight must be positive");
+            log.warn("Total weight is <= 0 ({}). Defaulting to 1kg (1000g).", totalWeightGrams);
+            totalWeightGrams = 1000;
         }
 
         long chargeableWeight = totalWeightGrams; // in checkout, volumetric is not recalculated
@@ -169,8 +172,8 @@ public class ShippingQuoteService {
             quoteSource = "SELLER_TEMPLATE";
             log.info("Seller template {} matched for order {}", tmpl.getId(), order.getId());
         } else {
-            GlobalShippingCalculatorService.QuoteResult result =
-                    globalCalculator.calculate(mode, country, chargeableWeight);
+            GlobalShippingCalculatorService.QuoteResult result = globalCalculator.calculate(mode, country,
+                    chargeableWeight);
             shippingCostPaise = result.shippingCostPaise();
             daysMin = result.deliveryDaysMin();
             daysMax = result.deliveryDaysMax();
@@ -215,7 +218,7 @@ public class ShippingQuoteService {
         response.setEstimatedDeliveryDaysMin(tmpl.getEstimatedDeliveryDaysMin());
         response.setEstimatedDeliveryDaysMax(tmpl.getEstimatedDeliveryDaysMax());
         response.setQuoteSource("SELLER_TEMPLATE");
-        
+
         ShippingQuoteDto.QuoteBreakdown breakdown = new ShippingQuoteDto.QuoteBreakdown();
         breakdown.setBaseCostPaise(baseCost);
         breakdown.setWeightChargePaise(weightCharge);
@@ -223,18 +226,20 @@ public class ShippingQuoteService {
         breakdown.setShippingZone(tmpl.getDestinationValue());
         breakdown.setZoneMultiplier(1.0);
         response.setBreakdown(breakdown);
-        
+
         response.setQuotedAt(Instant.now());
         return response;
     }
 
     /**
      * Volumetric weight: (L_cm × W_cm × H_cm) / 5000 → converted to grams.
-     * Dimensions come in mm. Formula: (L*W*H) / 5_000_000_000 → kg → * 1000 → grams.
+     * Dimensions come in mm. Formula: (L*W*H) / 5_000_000_000 → kg → * 1000 →
+     * grams.
      * Simplified: (L_mm * W_mm * H_mm) / 5_000_000 grams.
      */
     static long calculateVolumetricWeightGrams(int lengthMm, int widthMm, int heightMm) {
-        if (lengthMm <= 0 || widthMm <= 0 || heightMm <= 0) return 0;
+        if (lengthMm <= 0 || widthMm <= 0 || heightMm <= 0)
+            return 0;
         long volumeMm3 = (long) lengthMm * widthMm * heightMm;
         return Math.max(1, volumeMm3 / 5_000_000L);
     }
