@@ -146,8 +146,13 @@ public class RFQChatService {
         msg = messageRepository.save(msg);
 
         // Move RFQ → UNDER_NEGOTIATION if still OPEN
-        // REMOVED: RFQ remains OPEN to allow independent negotiation channels with
-        // other sellers.
+        if (chat.getRfq().getStatus() == RfqStatus.OPEN) {
+            chat.getRfq().setStatus(RfqStatus.UNDER_NEGOTIATION);
+            rfqRepository.save(chat.getRfq());
+        }
+
+        // Sync proposal into an RfqQuote immediately so it appears on the Buyer RFQ details view
+        createQuoteFromProposal(chat.getRfq(), seller, msg);
 
         // Post SYSTEM message
         postSystemMessage(chat, "Seller proposed a new price: "
@@ -201,6 +206,9 @@ public class RFQChatService {
         UUID buyerProfileId = rfq.getBuyer().getId();
         RfqFinalizeResponse finalizeResp = rfqFinalizeService.finalizeRfq(buyerProfileId, rfq.getId(), quote.getId());
 
+        // Prevent Hibernate dirty-checking from reverting the RFQ state when saving the chat later
+        chat.getRfq().setStatus(com.IndiExport.backend.entity.RfqStatus.CONVERTED_TO_ORDER);
+        
         // Lock chat
         chat.setActive(false);
         chat.setClosedAt(Instant.now());
@@ -290,7 +298,9 @@ public class RFQChatService {
             throw new ResourceNotFoundException("Seller profile not found for user " + sellerUser.getId());
         }
 
-        RfqQuote quote = new RfqQuote();
+        RfqQuote quote = rfqQuoteRepository.findByRfqIdAndSellerId(rfq.getId(), sellerProfile.getId())
+                .orElse(new RfqQuote());
+
         quote.setRfq(rfq);
         quote.setSeller(sellerProfile);
         quote.setQuotedPriceInrPaise(proposal.getProposedPriceMinor());

@@ -237,7 +237,7 @@ const OrderDetailsPage = () => {
             <RaiseDisputeModal
                 isOpen={isDisputeModalOpen}
                 onClose={() => setIsDisputeModalOpen(false)}
-                order={order}
+                orderId={order.id}
                 onSuccess={() => {
                     navigate('/buyer/disputes');
                 }}
