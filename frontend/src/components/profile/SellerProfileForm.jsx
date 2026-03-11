@@ -2,9 +2,10 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Save, Building2, Globe, Mail, Phone, MapPin, Loader2 } from 'lucide-react';
 import { requiredValidator, phoneValidator, postalCodeValidator, urlValidator, emailValidator } from '../../utils/validators';
+import useLocationAutoFill from '../../hooks/useLocationAutoFill';
 
 const SellerProfileForm = ({ initialData, onSubmit, loading }) => {
-    const { register, handleSubmit, formState: { errors, isDirty } } = useForm({
+    const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors, isDirty } } = useForm({
         defaultValues: {
             companyName: initialData?.companyName || '',
             website: initialData?.website || '',
@@ -17,6 +18,17 @@ const SellerProfileForm = ({ initialData, onSubmit, loading }) => {
             country: initialData?.country || 'IN'
         }
     });
+
+    const postalCodeValue = watch('postalCode');
+    const { loading: locationLoading, handlePostalCodeChange, handleBlur } = useLocationAutoFill({
+        postalCode: postalCodeValue,
+        country: 'IN', // Sellers are restricted to India
+        setValue,
+        setError,
+        clearErrors
+    });
+
+    const { onChange: pcOnChange, onBlur: pcOnBlur, ...pcRegister } = register('postalCode', postalCodeValidator);
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -128,9 +140,20 @@ const SellerProfileForm = ({ initialData, onSubmit, loading }) => {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Postal Code</label>
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            Postal Code
+                            {locationLoading && <Loader2 size={14} className="animate-spin text-indigo-500" />}
+                        </label>
                         <input
-                            {...register('postalCode', postalCodeValidator)}
+                            {...pcRegister}
+                            onChange={(e) => {
+                                pcOnChange(e);
+                                handlePostalCodeChange(e);
+                            }}
+                            onBlur={(e) => {
+                                pcOnBlur(e);
+                                handleBlur();
+                            }}
                             className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border ${errors.postalCode ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} focus:ring-2 focus:ring-indigo-500 outline-none transition-all`}
                         />
                         {errors.postalCode && <p className="text-xs font-medium text-rose-500">{errors.postalCode.message}</p>}
@@ -143,8 +166,8 @@ const SellerProfileForm = ({ initialData, onSubmit, loading }) => {
                     type="submit"
                     disabled={loading || !isDirty}
                     className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-white shadow-xl transition-all active:scale-95 ${loading || !isDirty
-                            ? 'bg-slate-400 cursor-not-allowed grayscale'
-                            : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-500/25'
+                        ? 'bg-slate-400 cursor-not-allowed grayscale'
+                        : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-500/25'
                         }`}
                 >
                     {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}

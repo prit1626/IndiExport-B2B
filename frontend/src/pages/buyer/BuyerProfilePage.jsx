@@ -49,6 +49,9 @@ const BuyerProfilePage = () => {
         setUpdating(true);
         try {
             const response = await profileApi.updateBuyerProfile(data);
+            if (response.data?.preferredCurrency) {
+                localStorage.setItem('preferredCurrency', response.data.preferredCurrency);
+            }
             setProfile(response.data);
             await refreshUser(authApi.getMe); // Sync auth store
             toast.success("Profile updated successfully");

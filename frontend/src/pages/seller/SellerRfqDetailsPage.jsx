@@ -82,7 +82,7 @@ const SellerRfqDetailsPage = () => {
                             <div className="grid grid-cols-2 gap-4 mb-6">
                                 <div className="flex items-center gap-2 text-slate-600">
                                     <Package size={18} className="text-brand-600" />
-                                    <span>{rfq.qty} {rfq.unit}</span>
+                                    <span>{rfq.quantity} {rfq.unit}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-slate-600">
                                     <Clock size={18} className="text-brand-600" />
@@ -115,7 +115,12 @@ const SellerRfqDetailsPage = () => {
                             {rfq.targetPriceINRPaise && (
                                 <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-100 text-center">
                                     <p className="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">Target Price</p>
-                                    <p className="text-2xl font-bold text-green-700">₹{(rfq.targetPriceINRPaise / 100).toLocaleString()}</p>
+                                    <p className="text-xl font-bold text-green-700">
+                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: rfq.targetCurrency || 'USD' }).format(rfq.targetPriceMinor / 100)}
+                                    </p>
+                                    <p className="text-sm text-green-600 font-medium">
+                                        (≈ ₹{(rfq.targetPriceINRPaise / 100).toLocaleString()})
+                                    </p>
                                     <p className="text-xs text-green-600 mt-1">per {rfq.unit}</p>
                                 </div>
                             )}

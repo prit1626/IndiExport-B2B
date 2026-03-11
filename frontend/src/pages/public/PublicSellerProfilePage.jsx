@@ -4,6 +4,7 @@ import { Building2, MapPin, Globe, ShieldCheck, Mail, Phone, Package, Star, Arro
 import { motion } from 'framer-motion';
 import profileApi from '../../api/profileApi';
 import productApi from '../../api/productApi';
+import useAuthStore from '../../store/authStore';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import ProductCard from '../../components/products/ProductCard';
 import ProductGridSkeleton from '../../components/products/ProductGridSkeleton';
@@ -12,17 +13,37 @@ import ProfileErrorState from '../../components/profile/ProfileErrorState';
 
 const PublicSellerProfilePage = () => {
     const { id } = useParams();
+    const { user, isAuthenticated } = useAuthStore();
     const [profile, setProfile] = useState(null);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [error, setError] = useState(null);
+    const [preferredCurrency, setPreferredCurrency] = useState('INR');
 
     useEffect(() => {
         if (id) {
             fetchData();
         }
     }, [id]);
+
+    // Fetch buyer's preferred currency on mount
+    useEffect(() => {
+        if (isAuthenticated && user?.role === 'BUYER') {
+            const fetchBuyerPreferences = async () => {
+                try {
+                    const response = await profileApi.getBuyerProfile();
+                    if (response.data?.preferredCurrency) {
+                        setPreferredCurrency(response.data.preferredCurrency);
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch buyer preferences:', err);
+                    // Silently fail - keep default INR
+                }
+            };
+            fetchBuyerPreferences();
+        }
+    }, [isAuthenticated, user?.role]);
 
     const fetchData = async () => {
         setLoading(true);

@@ -9,8 +9,9 @@ import OrderDetailsSkeleton from '../../components/orders/OrderDetailsSkeleton';
 import OrdersErrorState from '../../components/orders/OrdersErrorState';
 import InvoiceButtons from '../../components/orders/InvoiceButtons';
 import { formatShortDate, formatTime } from '../../utils/formatDate';
-import { MapPin, Phone, Mail, Truck, CreditCard, ArrowLeft, AlertCircle } from 'lucide-react';
+import { MapPin, Phone, Mail, Truck, CreditCard, ArrowLeft, AlertCircle, Star } from 'lucide-react';
 import RaiseDisputeModal from '../../components/disputes/RaiseDisputeModal';
+import AddReviewModal from '../../components/review/AddReviewModal';
 
 const OrderDetailsPage = () => {
     const { id } = useParams();
@@ -20,6 +21,7 @@ const OrderDetailsPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -99,6 +101,17 @@ const OrderDetailsPage = () => {
                             >
                                 <Truck size={18} />
                                 Track Order
+                            </button>
+                        )}
+
+                        {/* Write Review Button */}
+                        {(order.status === 'DELIVERED' || order.status === 'COMPLETED') && (
+                            <button
+                                onClick={() => setIsReviewModalOpen(true)}
+                                className="flex items-center gap-2 bg-white text-brand-600 px-4 py-2 rounded-lg border border-brand-200 font-medium hover:bg-brand-50 transition-colors shadow-sm"
+                            >
+                                <Star size={18} />
+                                Write Review
                             </button>
                         )}
 
@@ -212,13 +225,21 @@ const OrderDetailsPage = () => {
                 </div>
             </div>
 
+            <AddReviewModal
+                isOpen={isReviewModalOpen}
+                onClose={() => setIsReviewModalOpen(false)}
+                order={order}
+                onSuccess={() => {
+                    // Optionally refresh order if needed, or just toast (handled in modal)
+                }}
+            />
+
             <RaiseDisputeModal
                 isOpen={isDisputeModalOpen}
                 onClose={() => setIsDisputeModalOpen(false)}
-                orderId={order.id}
+                order={order}
                 onSuccess={() => {
-                    // Update order details after dispute raised
-                    orderApi.getOrderById(id).then(res => setOrder(res.data || res));
+                    navigate('/buyer/disputes');
                 }}
             />
         </div>

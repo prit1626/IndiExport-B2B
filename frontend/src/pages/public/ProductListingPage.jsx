@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Filter, Search } from 'lucide-react';
 import productApi from '../../api/productApi';
+import profileApi from '../../api/profileApi';
+import useAuthStore from '../../store/authStore';
 import useDebounce from '../../hooks/useDebounce';
 import ProductCard from '../../components/products/ProductCard';
 import ProductFiltersSidebar from '../../components/products/ProductFiltersSidebar';
@@ -12,6 +14,10 @@ import Pagination from '../../components/common/Pagination';
 
 const ProductListingPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const { user, isAuthenticated } = useAuthStore();
+
+    // Preferred currency state
+    const [preferredCurrency, setPreferredCurrency] = useState('INR');
 
     // 1. Read filters directly from URL
     const filters = useMemo(() => ({
@@ -52,6 +58,25 @@ const ProductListingPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+    // Fetch buyer's preferred currency on mount
+    useEffect(() => {
+        if (isAuthenticated && user?.role === 'BUYER') {
+            const fetchBuyerPreferences = async () => {
+                try {
+                    const response = await profileApi.getBuyerProfile();
+                    if (response.data?.preferredCurrency) {
+                        localStorage.setItem('preferredCurrency', response.data.preferredCurrency);
+                        setPreferredCurrency(response.data.preferredCurrency);
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch buyer preferences:', err);
+                    // Silently fail - keep default INR
+                }
+            };
+            fetchBuyerPreferences();
+        }
+    }, [isAuthenticated, user?.role]);
 
     // 4. Helper to update URL params
     const updateFilters = (newFilters) => {

@@ -10,7 +10,7 @@ const invoiceApi = {
     downloadInvoiceByOrder: async (orderId) => {
         const toastId = toast.loading('Generating invoice...');
         try {
-            const response = await axiosClient.get(`/invoices/order/${orderId}/pdf`, {
+            const response = await axiosClient.get(`invoices/order/${orderId}/pdf`, {
                 responseType: 'blob',
                 headers: { Accept: 'application/pdf' },
             });
@@ -52,7 +52,7 @@ const invoiceApi = {
 
     // Legacy methods kept for backward compatibility
     getInvoiceByOrderId: async (orderId) => {
-        const response = await axiosClient.get(`/invoices/order/${orderId}`);
+        const response = await axiosClient.get(`invoices/order/${orderId}`);
         return response.data || response;
     },
 
@@ -60,7 +60,7 @@ const invoiceApi = {
         // Delegates to the order-based download — call downloadInvoiceByOrder when you have orderId
         const toastId = toast.loading('Fetching invoice...');
         try {
-            const response = await axiosClient.get(`/invoices/${invoiceId}/pdf-stream`, {
+            const response = await axiosClient.get(`invoices/${invoiceId}/pdf-stream`, {
                 responseType: 'blob',
                 headers: { Accept: 'application/pdf' },
             });
@@ -74,7 +74,7 @@ const invoiceApi = {
         }
     },
 
-    getInvoiceDownloadUrl: (invoiceId) => `/api/v1/invoices/${invoiceId}/download`,
+    getInvoiceDownloadUrl: (invoiceId) => `/invoices/${invoiceId}/download`,
 };
 
 export default invoiceApi;

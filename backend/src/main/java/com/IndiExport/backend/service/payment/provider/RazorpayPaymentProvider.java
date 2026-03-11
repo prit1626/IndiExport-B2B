@@ -123,4 +123,43 @@ public class RazorpayPaymentProvider implements PaymentProvider {
             throw new PaymentGatewayException("RAZORPAY", "Failed to create plan upgrade order: " + e.getMessage());
         }
     }
+    @Override
+    public RazorpayOrderResponse createRefundPayment(com.IndiExport.backend.entity.Dispute dispute, long amountPaise) {
+        try {
+            RazorpayClient client = getClient();
+            
+            JSONObject options = new JSONObject();
+            options.put("amount", amountPaise);
+            options.put("currency", "INR");
+            options.put("receipt", "REFUND_" + dispute.getId().toString().substring(0, 8));
+            
+            Map<String, String> notes = new HashMap<>();
+            notes.put("dispute_id", dispute.getId().toString());
+            notes.put("type", "DISPUTE_REFUND");
+            notes.put("order_id", dispute.getOrder().getId().toString());
+            options.put("notes", new JSONObject(notes));
+
+            com.razorpay.Order razorpayOrder = client.orders.create(options);
+            
+            // Assume the seller pays the refund
+            com.IndiExport.backend.entity.User sellerUser = dispute.getOrder().getSeller().getUser();
+
+            return RazorpayOrderResponse.builder()
+                    .razorpay(PaymentResponse.builder()
+                            .razorpayOrderId(razorpayOrder.get("id"))
+                            .key(keyId)
+                            .amountMinor(amountPaise)
+                            .currency("INR")
+                            .buyerName(sellerUser.getFirstName() + " " + sellerUser.getLastName())
+                            .buyerEmail(sellerUser.getEmail())
+                            .buyerPhone(sellerUser.getPhoneNumber())
+                            .notes(notes)
+                            .build())
+                    .build();
+
+        } catch (RazorpayException e) {
+            log.error("Razorpay Refund Order Creation Failed: {}", e.getMessage());
+            throw new PaymentGatewayException("RAZORPAY", "Failed to create refund order: " + e.getMessage());
+        }
+    }
 }

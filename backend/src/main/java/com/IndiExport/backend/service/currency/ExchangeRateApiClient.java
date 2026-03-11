@@ -10,24 +10,21 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /**
- * Client for the Frankfurter API (https://frankfurter.app).
- * Backed by European Central Bank reference rates. Free, no API key.
- *
- * Returns rates as raw doubles. Callers MUST convert to rateMicros (long)
- * immediately to avoid floating-point drift.
+ * Client for the ExchangeRate-API (https://www.exchangerate-api.com).
+ * Specifically uses the free/open v4 endpoint for INR base rates.
  */
 @Component
-public class FrankfurterExchangeRateClient {
+public class ExchangeRateApiClient {
 
-    private static final Logger log = LoggerFactory.getLogger(FrankfurterExchangeRateClient.class);
-    private static final String PROVIDER_NAME = "frankfurter.app";
+    private static final Logger log = LoggerFactory.getLogger(ExchangeRateApiClient.class);
+    private static final String PROVIDER_NAME = "exchangerate-api.com";
 
     private final RestClient restClient;
     private final String baseUrl;
 
-    public FrankfurterExchangeRateClient(
+    public ExchangeRateApiClient(
             RestClient restClient,
-            @Value("${currency.provider.base-url:https://api.frankfurter.app}") String baseUrl) {
+            @Value("${currency.provider.v4-url:https://api.exchangerate-api.com/v4/latest/INR}") String baseUrl) {
         this.restClient = restClient;
         this.baseUrl = baseUrl;
     }
@@ -36,16 +33,15 @@ public class FrankfurterExchangeRateClient {
      * Fetch the latest exchange rate for INR → targetCurrency.
      *
      * @param targetCurrency ISO 4217 currency code (e.g. "USD", "EUR")
-     * @return the exchange rate as a double (e.g. 0.01195 for INR→USD)
+     * @return the exchange rate as a double
      * @throws ExternalApiException if the API call fails
      */
     public double fetchRate(String targetCurrency) {
-        String url = baseUrl + "/latest?from=INR&to=" + targetCurrency;
         log.info("Fetching exchange rate from {} for INR → {}", PROVIDER_NAME, targetCurrency);
 
         try {
             JsonNode response = restClient.get()
-                    .uri(url)
+                    .uri(baseUrl)
                     .retrieve()
                     .body(JsonNode.class);
 

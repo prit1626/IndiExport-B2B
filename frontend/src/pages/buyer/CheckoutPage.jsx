@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useCartStore from '../../store/cartStore';
+import useAuthStore from '../../store/authStore';
 import checkoutApi from '../../api/checkoutApi';
+import profileApi from '../../api/profileApi';
 import AddressForm from '../../components/checkout/AddressForm';
 import CheckoutSummary from '../../components/checkout/CheckoutSummary';
 import TotalsBreakdown from '../../components/checkout/TotalsBreakdown';
@@ -12,15 +14,36 @@ import { ArrowLeft } from 'lucide-react';
 const CheckoutPage = () => {
     const navigate = useNavigate();
     const { cart, fetchCart } = useCartStore();
+    const { user, isAuthenticated } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [checkoutData, setCheckoutData] = useState(null); // Response from backend
     const [shippingMode, setShippingMode] = useState('AIR');
+    const [preferredCurrency, setPreferredCurrency] = useState('INR');
 
     useEffect(() => {
         if (!cart) {
             fetchCart();
         }
     }, [cart, fetchCart]);
+
+    // Fetch buyer's preferred currency on mount
+    useEffect(() => {
+        if (isAuthenticated && user?.role === 'BUYER') {
+            const fetchBuyerPreferences = async () => {
+                try {
+                    const response = await profileApi.getBuyerProfile();
+                    if (response.data?.preferredCurrency) {
+                        localStorage.setItem('preferredCurrency', response.data.preferredCurrency);
+                        setPreferredCurrency(response.data.preferredCurrency);
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch buyer preferences:', err);
+                    // Silently fail - keep default INR
+                }
+            };
+            fetchBuyerPreferences();
+        }
+    }, [isAuthenticated, user?.role]);
 
     useEffect(() => {
         // Redirect if cart empty
@@ -32,11 +55,88 @@ const CheckoutPage = () => {
     const handleFormSubmit = async (formData) => {
         setLoading(true);
         try {
-            // Backend CheckoutRequest expects:
-            // shippingAddress: { address (line1), city, state, postalCode, country }
-            // shippingMode: AIR | SEA | ...
-            // buyerCurrency: "INR" (normalization happens in backend)
+            // Validate cart and items exist
+            if (!cart || !cart.items || cart.items.length === 0) {
+                toast.error("Cart is empty. Please add items to cart.");
+                setLoading(false);
+                return;
+            }
 
+            // Log cart data for debugging
+            console.log("Cart Items:", cart.items);
+            console.log("Number of items:", cart.items.length);
+
+            // Calculate total weight from cart items
+            // Support multiple possible weight field locations with proper fallback logic
+            let totalWeight = 0;
+            
+            try {
+                totalWeight = cart.items.reduce((sum, item) => {
+                    let itemWeight = 0.5; // Even lighter default fallback to 0.5 kg per item
+                    let weightFound = false;
+
+                    // Check for weight in various possible formats
+                    if (item.weight && !isNaN(parseFloat(item.weight))) {
+                        itemWeight = Math.max(parseFloat(item.weight), 0.1);
+                        weightFound = true;
+                        console.log(`Item Weight: ${item.weight} kg`);
+                    } else if (item.weightGrams && !isNaN(item.weightGrams) && item.weightGrams > 0) {
+                        itemWeight = Math.max(item.weightGrams / 1000, 0.1);
+                        weightFound = true;
+                        console.log(`Item Weight Grams: ${item.weightGrams}g → ${itemWeight}kg`);
+                    } else if (item.productWeightGrams && !isNaN(item.productWeightGrams) && item.productWeightGrams > 0) {
+                        itemWeight = Math.max(item.productWeightGrams / 1000, 0.1);
+                        weightFound = true;
+                        console.log(`Product Weight Grams: ${item.productWeightGrams}g → ${itemWeight}kg`);
+                    } else if (item.product?.weight && !isNaN(parseFloat(item.product.weight))) {
+                        itemWeight = Math.max(parseFloat(item.product.weight), 0.1);
+                        weightFound = true;
+                        console.log(`Product.weight: ${item.product.weight}kg`);
+                    } else if (item.product?.weightGrams && !isNaN(item.product.weightGrams) && item.product.weightGrams > 0) {
+                        itemWeight = Math.max(item.product.weightGrams / 1000, 0.1);
+                        weightFound = true;
+                        console.log(`Product.weightGrams: ${item.product.weightGrams}g → ${itemWeight}kg`);
+                    }
+
+                    if (!weightFound) {
+                        console.log(`${item.productName}: No weight found, using default 0.5kg`);
+                    }
+
+                    const lineTotal = itemWeight * (item.quantity || 1);
+                    console.log(`Item: ${item.productName}, Weight: ${itemWeight}kg, Qty: ${item.quantity || 1}, Total: ${lineTotal}kg`);
+                    
+                    return sum + lineTotal;
+                }, 0);
+
+                // Ensure totalWeight is at least minimum
+                totalWeight = Math.max(totalWeight, 0.1);
+                
+            } catch (calcError) {
+                console.error("Error calculating weight:", calcError);
+                totalWeight = cart.items.length * 0.5; // Fallback: 0.5kg per item
+            }
+
+            console.log(`Total Weight Calculated: ${totalWeight}kg`);
+
+            // Validate total weight is a valid positive number
+            if (isNaN(totalWeight) || !isFinite(totalWeight) || totalWeight <= 0) {
+                console.error(`Invalid totalWeight: ${totalWeight}`);
+                toast.error("Unable to calculate valid cart weight. Please check cart items.");
+                setLoading(false);
+                return;
+            }
+
+            // Round to 2 decimal places
+            const finalTotalWeight = parseFloat(totalWeight.toFixed(2));
+            console.log(`Final Total Weight: ${finalTotalWeight} kg`);
+
+            // Determine buyer currency based on country - support both "IN" and "INDIA"
+            const countryValue = formData.country ? formData.country.toUpperCase() : '';
+            const isIndia = countryValue === 'INDIA' || countryValue === 'IN' || countryValue === 'IND';
+            const buyerCurrency = isIndia ? 'INR' : 'USD';
+            console.log(`Country: ${formData.country}, Detected as India: ${isIndia}, Currency: ${buyerCurrency}`);
+
+            // Build payload with ALL required fields
             const payload = {
                 shippingAddress: {
                     address: formData.line1 + (formData.line2 ? ", " + formData.line2 : ""),
@@ -46,15 +146,38 @@ const CheckoutPage = () => {
                     country: formData.country
                 },
                 shippingMode: shippingMode,
-                buyerCurrency: formData.country.toUpperCase() === 'INDIA' ? 'INR' : 'USD'
+                buyerCurrency: buyerCurrency,
+                totalWeight: Number(finalTotalWeight) // Explicitly convert to number
             };
 
+            console.log("Checkout Payload being sent:", JSON.stringify(payload, null, 2));
+            console.log("Total Weight Type:", typeof payload.totalWeight, "Value:", payload.totalWeight);
+
             const response = await checkoutApi.createCheckout(payload);
+            console.log("Checkout Response:", response.data);
             setCheckoutData(response.data);
             toast.success("Order Created Successfully!");
         } catch (error) {
-            console.error(error);
-            const msg = error.response?.data?.message || "Checkout failed. Please try again.";
+            console.error("Checkout Error Details:", {
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                backendMessage: error.response?.data?.message,
+                backendError: error.response?.data?.error,
+                fullData: error.response?.data,
+                config: error.config
+            });
+            
+            // Provide more specific error messages based on status code
+            let msg = "Checkout failed. Please try again.";
+            if (error.response?.status === 503) {
+                msg = error.response?.data?.message || "Service temporarily unavailable. The server is having issues processing your checkout.";
+            } else if (error.response?.status === 400) {
+                msg = error.response?.data?.message || "Invalid checkout data. Please check your address and try again.";
+            } else if (error.response?.data?.message) {
+                msg = error.response.data.message;
+            }
+            
             toast.error(msg);
         } finally {
             setLoading(false);

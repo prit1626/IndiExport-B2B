@@ -23,6 +23,9 @@ public class CheckoutDto {
         @NotBlank(message = "Buyer currency is required")
         private String buyerCurrency;
 
+        @NotNull(message = "Total weight is required")
+        private Double totalWeight;
+
         private String specialInstructions;
 
         public CheckoutRequest() {}
@@ -34,6 +37,8 @@ public class CheckoutDto {
         public void setShippingMode(ShippingMode shippingMode) { this.shippingMode = shippingMode; }
         public String getBuyerCurrency() { return buyerCurrency; }
         public void setBuyerCurrency(String buyerCurrency) { this.buyerCurrency = buyerCurrency; }
+        public Double getTotalWeight() { return totalWeight; }
+        public void setTotalWeight(Double totalWeight) { this.totalWeight = totalWeight; }
         public String getSpecialInstructions() { return specialInstructions; }
         public void setSpecialInstructions(String specialInstructions) { this.specialInstructions = specialInstructions; }
     }

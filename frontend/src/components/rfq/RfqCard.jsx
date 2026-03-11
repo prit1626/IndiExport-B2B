@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Clock, Package, DollarSign, FileText } from 'lucide-react';
-import { formatTime } from '../../utils/formatDate'; // Assuming reuse or chatUtils
+import { formatTime } from '../../utils/formatDate';
+import { formatCurrency } from '../../utils/currencyFormatter';
 
 const RfqCard = ({ rfq, onClick }) => {
     return (
@@ -52,7 +53,8 @@ const RfqCard = ({ rfq, onClick }) => {
                         {rfq.targetPriceINRPaise && (
                             <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded">
                                 <DollarSign size={14} />
-                                Target: ₹{(rfq.targetPriceINRPaise / 100).toLocaleString()}
+                                Target: {new Intl.NumberFormat('en-US', { style: 'currency', currency: rfq.targetCurrency || 'USD' }).format(rfq.targetPriceMinor / 100)}
+                                <span className="text-[10px] opacity-70 ml-1">(≈ ₹{(rfq.targetPriceINRPaise / 100).toLocaleString()})</span>
                             </span>
                         )}
                     </div>

@@ -2,28 +2,13 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, ShieldCheck, MapPin, Clock, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 
 const ProductCard = ({ product }) => {
+
     const navigate = useNavigate();
-
-    // Format currency
-    const formatPrice = (amount, currency = 'USD') => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currency,
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-        }).format(amount);
-    };
-
-    const formatINR = (paise) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(paise / 100);
-    };
+    const currency = getBuyerCurrency();
 
     return (
         <motion.div
@@ -84,22 +69,12 @@ const ProductCard = ({ product }) => {
                 <div className="space-y-1">
                     <div className="flex items-baseline gap-1">
                         <span className="text-lg font-bold text-brand-700">
-                            {product.convertedPrice && product.convertedPrice.convertedPriceMinor
-                                ? formatPrice(product.convertedPrice.convertedPriceMinor / 100, product.convertedPrice.currency)
-                                : formatINR(product.pricePaise || 0)
-                            }
+                            {formatCurrency((product.pricePaise || 0) / 100, currency)}
                         </span>
                         <span className="text-sm text-slate-500 font-normal">/ {product.unit}</span>
                     </div>
 
-                    {product.convertedPrice && product.convertedPrice.exchangeRateMicros && (
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                            <span>{formatINR(product.pricePaise || 0)}</span>
-                            <span title={`Rate: ${(product.convertedPrice.exchangeRateMicros / 1000000).toFixed(2)}`}>
-                                ~ {(product.convertedPrice.exchangeRateMicros / 1000000).toFixed(2)} INR/{product.convertedPrice.currency}
-                            </span>
-                        </div>
-                    )}
+
                 </div>
             </div>
         </motion.div>

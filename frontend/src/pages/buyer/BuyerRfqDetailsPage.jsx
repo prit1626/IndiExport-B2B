@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import rfqApi from '../../api/rfqApi';
 import toast from 'react-hot-toast';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 
 const STATUS_CONFIG = {
     OPEN: { label: 'Open', className: 'bg-emerald-100 text-emerald-700' },
@@ -23,12 +25,9 @@ const QUOTE_STATUS_CONFIG = {
     WITHDRAWN: { label: 'Withdrawn', className: 'bg-slate-100 text-slate-500' },
 };
 
-const fmtINR = (paise) => {
-    if (!paise) return 'N/A';
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paise / 100);
-};
 
 export default function BuyerRfqDetailsPage() {
+    const currency = getBuyerCurrency();
     const { rfqId } = useParams();
     const navigate = useNavigate();
     const [rfq, setRfq] = useState(null);
@@ -159,7 +158,7 @@ export default function BuyerRfqDetailsPage() {
                     {rfq.targetPriceMinor && (
                         <div className="mt-3 flex items-center gap-2">
                             <TrendingDown size={15} className="text-brand-500" />
-                            <span className="text-sm text-slate-600">Target price: <span className="font-semibold text-brand-700">{fmtINR(rfq.targetPriceMinor)} per unit</span></span>
+                            <span className="text-sm text-slate-600">Target price: <span className="font-semibold text-brand-700">{new Intl.NumberFormat('en-US', { style: 'currency', currency: rfq.targetCurrency || currency }).format(rfq.targetPriceMinor / 100)} per unit</span></span>
                         </div>
                     )}
                 </div>
@@ -236,11 +235,18 @@ export default function BuyerRfqDetailsPage() {
                                                 <div className="grid grid-cols-3 gap-3 mt-3">
                                                     <div>
                                                         <div className="text-xs text-slate-400 mb-0.5">Unit Price</div>
-                                                        <div className="text-lg font-bold text-slate-900">{fmtINR(quote.quotedPriceInrPaise)}</div>
+                                                        <div className="text-lg font-bold text-slate-900">
+                                                            {formatCurrency(quote.quotedPriceInrPaise / 100, currency)}
+                                                            <span className="text-xs font-normal text-slate-500 ml-1.5 block sm:inline">
+                                                                (₹{(quote.quotedPriceInrPaise / 100).toLocaleString()})
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <div className="text-xs text-slate-400 mb-0.5">Total ({rfq.quantity} {rfq.unit})</div>
-                                                        <div className="font-semibold text-brand-600">{fmtINR(quote.quotedPriceInrPaise * rfq.quantity)}</div>
+                                                        <div className="font-semibold text-brand-600">
+                                                            {formatCurrency((quote.quotedPriceInrPaise * rfq.quantity) / 100, currency)}
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <div className="text-xs text-slate-400 mb-0.5">Lead Time</div>
@@ -249,7 +255,7 @@ export default function BuyerRfqDetailsPage() {
                                                 </div>
                                                 {quote.shippingEstimateInrPaise && (
                                                     <div className="mt-2 text-sm text-slate-500">
-                                                        + Shipping: {fmtINR(quote.shippingEstimateInrPaise)}
+                                                        + Shipping: {formatCurrency(quote.shippingEstimateInrPaise / 100, currency)}
                                                     </div>
                                                 )}
                                                 {quote.notes && (

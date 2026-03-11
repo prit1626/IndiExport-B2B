@@ -129,13 +129,13 @@ const UpgradePlanPage = () => {
                         </div>
 
                         {/* Basic Plan Mockup */}
-                        <div className="mt-12 bg-slate-200/50 rounded-2xl p-6 border border-slate-200 flex items-center justify-between">
+                        <div className="mt-12 bg-brand-50 rounded-2xl p-6 border border-brand-200 flex items-center justify-between">
                             <div>
-                                <h4 className="font-bold text-slate-700">Current Plan: Basic</h4>
-                                <p className="text-sm text-slate-500">Maximum 5 active products</p>
+                                <h4 className="font-bold text-brand-800">Current Plan: Advanced Seller</h4>
+                                <p className="text-sm text-brand-600">Unlimited Active Products</p>
                             </div>
-                            <span className="px-3 py-1 bg-slate-400 text-white text-xs font-bold rounded-lg uppercase">
-                                Free
+                            <span className="px-3 py-1 bg-brand-500 text-white text-xs font-bold rounded-lg uppercase">
+                                Active
                             </span>
                         </div>
                     </div>

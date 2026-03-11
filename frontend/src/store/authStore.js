@@ -30,6 +30,9 @@ const useAuthStore = create((set, get) => ({
             } else if (user.role && !user.roles) {
                 user.roles = [user.role];
             }
+            localStorage.setItem("user", JSON.stringify(user));
+        } else {
+            localStorage.removeItem("user");
         }
         set({ user, isAuthenticated: !!user });
     },
@@ -57,6 +60,7 @@ const useAuthStore = create((set, get) => ({
     logout: () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
         set({
             user: null,
             accessToken: null,

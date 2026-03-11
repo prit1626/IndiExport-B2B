@@ -3,20 +3,17 @@ import { motion } from 'framer-motion';
 import { Trash2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import QtyStepper from './QtyStepper';
-import ShippingModeSelect from './ShippingModeSelect';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 import useCartStore from '../../store/cartStore';
 
 const CartItemCard = ({ item }) => {
+    const currency = getBuyerCurrency();
     const { updateItem, removeItem, itemLoading } = useCartStore();
     const isLoading = itemLoading[item.id];
 
     const handleQtyChange = (newQty) => {
         updateItem(item.id, { quantity: newQty });
-    };
-
-    const handleShippingChange = (newMode) => {
-        updateItem(item.id, { quantity: item.quantity, shippingMode: newMode });
     };
 
     return (
@@ -74,22 +71,12 @@ const CartItemCard = ({ item }) => {
                                 onChange={handleQtyChange}
                                 disabled={isLoading}
                             />
-                            <div className="w-32">
-                                <ShippingModeSelect
-                                    value={item.shippingMode}
-                                    onChange={handleShippingChange}
-                                    disabled={isLoading}
-                                />
-                            </div>
                         </div>
 
                         <div className="flex-1 text-right sm:ml-auto">
                             <p className="text-lg font-bold text-slate-900">
-                                {formatMoney(item.lineTotalPaise)}
+                                {formatCurrency(item.lineTotalPaise / 100, currency)}
                             </p>
-                            {/* <p className="text-xs text-slate-500">
-                               approx. {item.currency} {(item.lineTotalMinor / 100).toFixed(2)}
-                           </p> */}
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,5 @@
 package com.IndiExport.backend.controller.dispute;
 
-import com.IndiExport.backend.dto.dispute.AddEvidenceRequest;
 import com.IndiExport.backend.dto.dispute.DisputeListResponse;
 import com.IndiExport.backend.dto.dispute.DisputeResponse;
 import com.IndiExport.backend.dto.dispute.EvidenceResponse;
@@ -9,7 +8,6 @@ import com.IndiExport.backend.entity.User;
 import com.IndiExport.backend.repository.UserRepository;
 import com.IndiExport.backend.service.dispute.DisputeService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -83,6 +81,28 @@ public class SellerDisputeController {
             @PathVariable UUID disputeId) {
         User user = getUser(userDetails);
         return ResponseEntity.ok(disputeService.getDisputeDetails(disputeId, user.getId()));
+    }
+
+    @PutMapping("/{disputeId}/pay-refund")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<com.IndiExport.backend.dto.RazorpayOrderResponse> payRefund(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID disputeId) {
+        User user = getUser(userDetails);
+        
+        return ResponseEntity.ok(disputeService.sellerPayRefund(disputeId, user.getId()));
+    }
+
+    @PostMapping("/{disputeId}/verify-refund")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<java.util.Map<String, String>> verifyRefund(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID disputeId,
+            @RequestBody @Valid com.IndiExport.backend.dto.PaymentVerificationRequest request) {
+        User user = getUser(userDetails);
+        
+        disputeService.verifySellerRefund(disputeId, user.getId(), request);
+        return ResponseEntity.ok(java.util.Map.of("message", "Refund processed successfully"));
     }
 
     private User getUser(UserDetails userDetails) {

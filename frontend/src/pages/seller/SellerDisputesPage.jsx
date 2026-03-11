@@ -56,6 +56,15 @@ const SellerDisputesPage = () => {
         setSearchParams({ page: 0, status: filterStatus, sort: e.target.value });
     };
 
+    const handleViewDetails = async (dispute) => {
+        try {
+            const { data } = await disputeApi.sellerGetDisputeById(dispute.id);
+            setSelectedDispute(data.data || data);
+        } catch (error) {
+            toast.error('Failed to load dispute details');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
             {/* Header */}
@@ -122,7 +131,7 @@ const SellerDisputesPage = () => {
                                 <DisputeCard
                                     key={dispute.id}
                                     dispute={dispute}
-                                    onClick={() => setSelectedDispute(dispute)}
+                                    onClick={() => handleViewDetails(dispute)}
                                 />
                             ))}
                         </div>

@@ -1,8 +1,10 @@
 import React from 'react';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 import { Loader2 } from 'lucide-react';
 
 const CheckoutSummary = ({ cart, loading, onSubmit, buttonText = "Confirm Order" }) => {
+    const currency = getBuyerCurrency();
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-24">
             <h3 className="text-lg font-bold text-slate-900 mb-4">In Your Cart</h3>
@@ -15,10 +17,10 @@ const CheckoutSummary = ({ cart, loading, onSubmit, buttonText = "Confirm Order"
                         </div>
                         <div className="flex-1">
                             <p className="text-sm font-medium text-slate-900 line-clamp-1">{item.productName}</p>
-                            <p className="text-xs text-slate-500 mb-1">{item.quantity} x {formatMoney(item.unitPricePaise)}</p>
+                            <p className="text-xs text-slate-500 mb-1">{item.quantity} x {formatCurrency(item.unitPricePaise / 100, currency)}</p>
                             <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded text-xs">
                                 <span className="text-slate-600">{item.shippingMode}</span>
-                                <span className="font-semibold text-slate-900">{formatMoney(item.lineTotalPaise)}</span>
+                                <span className="font-semibold text-slate-900">{formatCurrency(item.lineTotalPaise / 100, currency)}</span>
                             </div>
                         </div>
                     </div>
@@ -28,7 +30,7 @@ const CheckoutSummary = ({ cart, loading, onSubmit, buttonText = "Confirm Order"
             <div className="space-y-3 pt-4 border-t border-slate-100">
                 <div className="flex justify-between text-slate-600">
                     <span>Subtotal</span>
-                    <span className="font-medium text-slate-900">{formatMoney(cart.subtotalPaise)}</span>
+                    <span className="font-medium text-slate-900">{formatCurrency(cart.subtotalPaise / 100, currency)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                     <span>Estimated Shipping</span>

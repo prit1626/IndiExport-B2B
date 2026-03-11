@@ -8,23 +8,26 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 
 /**
- * Converts amounts from INR (paise) to any supported target currency (minor units).
+ * Converts amounts from INR (paise) to any supported target currency (minor
+ * units).
  *
  * Conversion math explained:
  * ─────────────────────────
  * Given:
- *   amountPaise     = price in Indian paise (long)
- *   rateMicros      = (1 INR → X target) * 1_000_000
- *   inrMultiplier   = 100 (paise per INR)
- *   targetMultiplier = e.g. 100 for USD, 1 for JPY, 1000 for KWD
+ * amountPaise = price in Indian paise (long)
+ * rateMicros = (1 INR → X target) * 1_000_000
+ * inrMultiplier = 100 (paise per INR)
+ * targetMultiplier = e.g. 100 for USD, 1 for JPY, 1000 for KWD
  *
- * Step 1: Convert paise to major INR:     majorINR  = amountPaise / 100
- * Step 2: Apply exchange rate:            majorTarget = majorINR * rate
- * Step 3: Convert to target minor units:  minorTarget = majorTarget * targetMultiplier
+ * Step 1: Convert paise to major INR: majorINR = amountPaise / 100
+ * Step 2: Apply exchange rate: majorTarget = majorINR * rate
+ * Step 3: Convert to target minor units: minorTarget = majorTarget *
+ * targetMultiplier
  *
  * Combined (integer math to avoid floating-point):
- *   convertedMinor = (amountPaise * rateMicros * targetMultiplier) / (inrMultiplier * 1_000_000)
- *                  = (amountPaise * rateMicros * targetMultiplier) / 100_000_000
+ * convertedMinor = (amountPaise * rateMicros * targetMultiplier) /
+ * (inrMultiplier * 1_000_000)
+ * = (amountPaise * rateMicros * targetMultiplier) / 100_000_000
  *
  * We use Math.round on intermediate double to handle any remainder correctly.
  */
@@ -58,10 +61,9 @@ public class CurrencyConversionService {
             return new ConversionResult(
                     amountPaise, "INR",
                     amountPaise, "INR",
-                    1_000_000L,     // 1:1 rate
+                    1_000_000L, // 1:1 rate
                     Instant.now(),
-                    "identity"
-            );
+                    "identity");
         }
 
         ExchangeRateCacheService.CachedRate cached = cacheService.getRate(currency);
@@ -69,7 +71,8 @@ public class CurrencyConversionService {
         long targetMultiplier = CurrencyMetadata.getMinorUnitMultiplier(currency);
         long inrMultiplier = CurrencyMetadata.getMinorUnitMultiplier("INR"); // 100
 
-        // Integer math: (amountPaise * rateMicros * targetMultiplier) / (inrMultiplier * 1_000_000)
+        // Integer math: (amountPaise * rateMicros * targetMultiplier) / (inrMultiplier
+        // * 1_000_000)
         // Use double for intermediate to avoid long overflow for very large amounts
         double numerator = (double) amountPaise * rateMicros * targetMultiplier;
         double denominator = (double) inrMultiplier * 1_000_000L;
@@ -85,8 +88,55 @@ public class CurrencyConversionService {
                 currency,
                 rateMicros,
                 cached.fetchedAt(),
-                cached.providerName()
-        );
+                cached.providerName());
+    }
+
+    /**
+     * Convert an amount from a target currency's minor units back to INR paise.
+     *
+     * @param amountMinor  amount in target currency's minor units
+     * @param fromCurrency ISO 4217 code (e.g. "USD", "JPY")
+     * @return ConversionResult where base is the foreign currency and converted is
+     *         INR
+     */
+    public ConversionResult convertToINR(long amountMinor, String fromCurrency) {
+        if (amountMinor <= 0) {
+            throw new InvalidMoneyAmountException(amountMinor);
+        }
+
+        String currency = CurrencyMetadata.validateAndNormalize(fromCurrency);
+
+        // Same-currency shortcut
+        if ("INR".equals(currency)) {
+            return new ConversionResult(
+                    amountMinor, "INR",
+                    amountMinor, "INR",
+                    1_000_000L,
+                    Instant.now(),
+                    "identity");
+        }
+
+        ExchangeRateCacheService.CachedRate cached = cacheService.getRate(currency);
+        long rateMicros = cached.rateMicros();
+        long targetMultiplier = CurrencyMetadata.getMinorUnitMultiplier(currency);
+
+        // Integer math: (amountMinor * 100 * 1_000_000) / (targetMultiplier *
+        // rateMicros)
+        double numerator = (double) amountMinor * 100_000_000L;
+        double denominator = (double) targetMultiplier * rateMicros;
+        long inrPaise = Math.round(numerator / denominator);
+
+        log.debug("Converted {} {} minor → {} INR paise | rate micros: {} | target multiplier: {}",
+                amountMinor, currency, inrPaise, rateMicros, targetMultiplier);
+
+        return new ConversionResult(
+                amountMinor,
+                currency,
+                inrPaise,
+                "INR",
+                rateMicros,
+                cached.fetchedAt(),
+                cached.providerName());
     }
 
     /**
@@ -99,6 +149,6 @@ public class CurrencyConversionService {
             String targetCurrency,
             long exchangeRateMicros,
             Instant rateTimestamp,
-            String providerName
-    ) {}
+            String providerName) {
+    }
 }

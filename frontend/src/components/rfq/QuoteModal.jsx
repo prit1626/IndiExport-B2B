@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Loader2, AlertCircle, Calendar } from 'lucide-react';
 import rfqApi from '../../api/rfqApi';
 import toast from 'react-hot-toast';
 
 const QuoteModal = ({ isOpen, onClose, rfq, onSuccess }) => {
-    const { register, handleSubmit, formState: { errors }, reset } = useForm({
+    const { register, handleSubmit, formState: { errors }, reset, control } = useForm({
         defaultValues: {
             leadTimeDays: '',
             notes: '',
@@ -15,6 +15,17 @@ const QuoteModal = ({ isOpen, onClose, rfq, onSuccess }) => {
             validityUntil: '',
         }
     });
+
+    const watchedPrice = useWatch({ control, name: 'quotedPriceInrPaise' });
+    const watchedShipping = useWatch({ control, name: 'shippingEstimateInrPaise' });
+
+    const totals = useMemo(() => {
+        const price = parseFloat(watchedPrice) || 0;
+        const shipping = parseFloat(watchedShipping) || 0;
+        const subtotal = price * (rfq?.quantity || 0);
+        const grandTotal = subtotal + shipping;
+        return { subtotal, grandTotal };
+    }, [watchedPrice, watchedShipping, rfq?.quantity]);
 
     const [submitting, setSubmitting] = useState(false);
 
@@ -81,10 +92,17 @@ const QuoteModal = ({ isOpen, onClose, rfq, onSuccess }) => {
                     <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
 
                         {/* Context Banner */}
-                        {rfq.targetPriceMinor && (
+                        {rfq.targetPriceINRPaise && (
                             <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-sm text-emerald-700 flex gap-2 items-start">
                                 <AlertCircle size={15} className="mt-0.5 shrink-0" />
-                                <p>Buyer's target: <strong>₹{(rfq.targetPriceMinor / 100).toLocaleString()}</strong> per {rfq.unit}</p>
+                                <div>
+                                    <p className="font-medium text-emerald-800">Buyer's target:</p>
+                                    <p className="text-lg font-bold">
+                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: rfq.targetCurrency || 'USD' }).format(rfq.targetPriceMinor / 100)}
+                                        <span className="text-xs font-normal ml-2 opacity-80">(≈ ₹{(rfq.targetPriceINRPaise / 100).toLocaleString()})</span>
+                                    </p>
+                                    <p className="text-[10px] opacity-70">per {rfq.unit}</p>
+                                </div>
                             </div>
                         )}
 
@@ -164,12 +182,32 @@ const QuoteModal = ({ isOpen, onClose, rfq, onSuccess }) => {
                             <p className="text-xs text-slate-400 mt-1">Your quote will automatically expire after this date</p>
                         </div>
 
+                        {/* Calculations Summary */}
+                        {(totals.subtotal > 0 || totals.grandTotal > 0) && (
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                                <div className="flex justify-between text-sm text-slate-600">
+                                    <span>Subtotal ({rfq.quantity} {rfq.unit} × ₹{parseFloat(watchedPrice || 0).toLocaleString()})</span>
+                                    <span className="font-semibold text-slate-800">₹{totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                {parseFloat(watchedShipping) > 0 && (
+                                    <div className="flex justify-between text-sm text-slate-600">
+                                        <span>Shipping Cost</span>
+                                        <span className="font-semibold text-slate-800">₹{parseFloat(watchedShipping).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                )}
+                                <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                                    <span className="text-base font-bold text-slate-900">Grand Total</span>
+                                    <span className="text-xl font-black text-brand-600">₹{totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Notes */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
                             <textarea
                                 rows={3}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500/20 resize-none"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500/20 resize-none transition-all focus:border-brand-300"
                                 placeholder="Shipping port, packaging specs, payment terms, etc."
                                 {...register('notes')}
                             />

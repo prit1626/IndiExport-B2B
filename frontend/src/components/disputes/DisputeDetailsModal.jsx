@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { X, User, Package, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, User, Package, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Dialog } from '@headlessui/react';
 import { motion } from 'framer-motion';
 import { formatDate } from '../../utils/formatDate';
@@ -10,10 +9,14 @@ import DisputeEvidenceGallery from './DisputeEvidenceGallery';
 import ResolveDisputeForm from './ResolveDisputeForm';
 import AddEvidenceForm from './AddEvidenceForm';
 import useAuthStore from '../../store/authStore';
+import disputeApi from '../../api/disputeApi';
+import { toast } from 'react-hot-toast';
+import loadRazorpayScript from '../../utils/loadRazorpay';
 
 const DisputeDetailsModal = ({ isOpen, onClose, dispute, onResolve }) => {
     const { user } = useAuthStore();
     const isAdmin = user?.role === 'ADMIN';
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
     if (!dispute) return null;
 
@@ -102,7 +105,135 @@ const DisputeDetailsModal = ({ isOpen, onClose, dispute, onResolve }) => {
                                             </p>
                                         )}
                                     </div>
-                                    <p className="text-sm text-emerald-700">{dispute.resolution.notes}</p>
+                                    <p className="text-sm text-emerald-700 whitespace-pre-wrap">{dispute.resolution.notes}</p>
+                                    
+                                    {/* Context-Specific User Messages & Actions */}
+                                    <div className="mt-4 pt-4 border-t border-emerald-200">
+                                        {/* Seller View */}
+                                        {!isAdmin && user?.role === 'SELLER' && (
+                                            <div className="flex flex-col gap-2">
+                                                {(dispute.resolution.action === 'REFUND' || dispute.resolution.action === 'PARTIAL_REFUND') && (
+                                                    dispute.resolution.notes?.includes('[Refund Processed by Seller') ? (
+                                                        <p className="text-sm font-medium text-emerald-800 bg-emerald-100/50 p-2 rounded">✓ You have successfully processed the refund for this dispute.</p>
+                                                    ) : (
+                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white/60 p-3 rounded border border-emerald-100">
+                                                            <p className="text-sm text-emerald-800 font-medium">You are required to process the refund.</p>
+                                                            <button
+                                                                disabled={isProcessingPayment}
+                                                                onClick={async () => {
+                                                                    setIsProcessingPayment(true);
+                                                                    try {
+                                                                        const res = await loadRazorpayScript();
+                                                                        if (!res) {
+                                                                            toast.error('Razorpay SDK failed to load. Are you online?');
+                                                                            setIsProcessingPayment(false);
+                                                                            return;
+                                                                        }
+
+                                                                        const { data } = await disputeApi.sellerPayRefund(dispute.id);
+                                                                        if (!data.razorpay) throw new Error("Invalid response from server");
+
+                                                                        const { key, amountMinor, currency, razorpayOrderId, buyerName, buyerEmail, buyerPhone, notes } = data.razorpay;
+
+                                                                        const options = {
+                                                                            key: key,
+                                                                            amount: amountMinor,
+                                                                            currency: currency,
+                                                                            name: "IndiExport - Dispute Refund",
+                                                                            description: `Refund for Order #${dispute.orderNumber}`,
+                                                                            order_id: razorpayOrderId,
+                                                                            handler: async function (response) {
+                                                                                try {
+                                                                                    // Verify Payment on Backend
+                                                                                    const verifyPayload = {
+                                                                                        razorpayPaymentId: response.razorpay_payment_id,
+                                                                                        razorpayOrderId: response.razorpay_order_id,
+                                                                                        razorpaySignature: response.razorpay_signature
+                                                                                    };
+
+                                                                                    await disputeApi.sellerVerifyRefund(dispute.id, verifyPayload);
+
+                                                                                    toast.success("Refund Processed Successfully!");
+                                                                                    if (onResolve) onResolve();
+                                                                                    onClose(); 
+                                                                                } catch (err) {
+                                                                                    console.error(err);
+                                                                                    toast.error("Refund verification failed. Please contact support.");
+                                                                                }
+                                                                            },
+                                                                            prefill: {
+                                                                                name: buyerName || "",
+                                                                                email: buyerEmail || "",
+                                                                                contact: buyerPhone || ""
+                                                                            },
+                                                                            notes: notes,
+                                                                            theme: {
+                                                                                color: "#059669" // emerald-600
+                                                                            },
+                                                                            modal: {
+                                                                                ondismiss: function () {
+                                                                                    setIsProcessingPayment(false);
+                                                                                    toast("Refund Payment cancelled");
+                                                                                }
+                                                                            }
+                                                                        };
+
+                                                                        const rzp = new window.Razorpay(options);
+                                                                        rzp.on('payment.failed', function (response) {
+                                                                            toast.error(response.error.description || "Refund payment failed");
+                                                                            setIsProcessingPayment(false);
+                                                                        });
+                                                                        rzp.open();
+
+                                                                    } catch (error) {
+                                                                        console.error(error);
+                                                                        toast.error('Failed to initiate refund process');
+                                                                        setIsProcessingPayment(false);
+                                                                    }
+                                                                }}
+                                                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium text-sm transition-colors shadow-sm whitespace-nowrap flex-shrink-0 flex items-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+                                                            >
+                                                                {isProcessingPayment && <Loader2 size={16} className="animate-spin" />}
+                                                                Pay Refund Now
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                )}
+                                                {dispute.resolution.action === 'REPLACEMENT' && (
+                                                    <p className="text-sm font-medium text-amber-800 bg-amber-50 p-3 rounded border border-amber-200">Please arrange to send a replacement item to the buyer.</p>
+                                                )}
+                                                {dispute.resolution.action === 'REJECT' && (
+                                                    <p className="text-sm font-medium text-slate-700 bg-slate-100 p-2 rounded">The dispute raised against this order was rejected by the admin.</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Buyer View */}
+                                        {!isAdmin && user?.role === 'BUYER' && (
+                                            <div className="flex flex-col gap-2">
+                                                {(dispute.resolution.action === 'REFUND' || dispute.resolution.action === 'PARTIAL_REFUND') && (
+                                                    dispute.resolution.notes?.includes('[Refund Processed by Seller') ? (
+                                                        <p className="text-sm font-medium text-emerald-800 bg-emerald-100/50 p-2 rounded">✓ The seller has successfully processed your refund.</p>
+                                                    ) : (
+                                                        <p className="text-sm font-medium text-amber-800 bg-amber-50 p-3 rounded border border-amber-200">
+                                                            ⏳ Resolution applied. Waiting for the seller to process the refund payment...
+                                                        </p>
+                                                    )
+                                                )}
+                                                {dispute.resolution.action === 'REPLACEMENT' && (
+                                                    <p className="text-sm font-medium text-emerald-800 bg-emerald-100/50 p-2 rounded">The seller is required to send you a replacement item.</p>
+                                                )}
+                                                {dispute.resolution.action === 'REJECT' && (
+                                                    <p className="text-sm font-medium text-slate-700 bg-slate-100 p-2 rounded">Your dispute request was declined by the admin.</p>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Admin View Instructions */}
+                                        {isAdmin && (
+                                            <p className="text-xs text-emerald-600 italic">Resolution has been communicated to both the buyer and seller.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}

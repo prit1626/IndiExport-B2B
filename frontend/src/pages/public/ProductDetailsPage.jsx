@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import productApi from '../../api/productApi';
+import profileApi from '../../api/profileApi';
+import useAuthStore from '../../store/authStore';
 import ProductMediaCarousel from '../../components/products/ProductMediaCarousel';
 import ProductInfoPanel from '../../components/products/ProductInfoPanel';
 import ProductTabs from '../../components/products/ProductTabs';
@@ -12,10 +14,12 @@ import { ArrowLeft } from 'lucide-react';
 const ProductDetailsPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user, isAuthenticated } = useAuthStore();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('desc');
+    const [preferredCurrency, setPreferredCurrency] = useState('INR');
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -47,6 +51,25 @@ const ProductDetailsPage = () => {
             fetchProduct();
         }
     }, [id]);
+
+    // Fetch buyer's preferred currency on mount
+    useEffect(() => {
+        if (isAuthenticated && user?.role === 'BUYER') {
+            const fetchBuyerPreferences = async () => {
+                try {
+                    const response = await profileApi.getBuyerProfile();
+                    if (response.data?.preferredCurrency) {
+                        localStorage.setItem('preferredCurrency', response.data.preferredCurrency);
+                        setPreferredCurrency(response.data.preferredCurrency);
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch buyer preferences:', err);
+                    // Silently fail - keep default INR
+                }
+            };
+            fetchBuyerPreferences();
+        }
+    }, [isAuthenticated, user?.role]);
 
     if (loading) return <ProductDetailsSkeleton />;
 
@@ -81,7 +104,7 @@ const ProductDetailsPage = () => {
                         images={product.images || [product.thumbnailUrl]} // Fallback to thumbnail if images array empty
                         videoUrl={product.videoUrl}
                     />
-                    <ProductInfoPanel product={product} />
+                    <ProductInfoPanel product={product} preferredCurrency={preferredCurrency} />
                 </div>
 
                 {/* Bottom Section: Tabs */}

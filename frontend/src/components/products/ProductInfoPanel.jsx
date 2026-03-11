@@ -5,12 +5,13 @@ import useAuthStore from '../../store/authStore';
 import cartApi from '../../api/cartApi';
 import chatApi from '../../api/chatApi';
 import { formatMoney } from '../../utils/formatMoney';
+import { convertPrice, getCurrencySymbol } from '../../utils/currencyConverter';
 import { format as formatDate } from 'date-fns';
 import Badge from '../common/Badge';
 import RatingStars from '../common/RatingStars';
 import { toast } from 'react-hot-toast';
 
-const ProductInfoPanel = ({ product }) => {
+const ProductInfoPanel = ({ product, preferredCurrency = 'INR' }) => {
     const navigate = useNavigate();
     const user = useAuthStore(state => state.user);
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
@@ -115,10 +116,23 @@ const ProductInfoPanel = ({ product }) => {
             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
                 <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-brand-700">
-                        {formatMoney(product.pricePaise || product.basePriceINRPaise)}
+                        {preferredCurrency !== 'INR' ? (
+                            <>
+                                {getCurrencySymbol(preferredCurrency)}
+                                {convertPrice(product.pricePaise ? product.pricePaise / 100 : product.basePriceINRPaise ? product.basePriceINRPaise / 100 : 0, preferredCurrency)}
+                            </>
+                        ) : (
+                            formatMoney(product.pricePaise || product.basePriceINRPaise)
+                        )}
                     </span>
-                    <span className="text-sm text-slate-500">IND / Unit</span>
+                    <span className="text-sm text-slate-500">{preferredCurrency} / Unit</span>
                 </div>
+
+                {preferredCurrency !== 'INR' && (
+                    <div className="mt-1 text-sm text-slate-500">
+                        Original: {formatMoney(product.pricePaise || product.basePriceINRPaise)}
+                    </div>
+                )}
 
                 {product.convertedPrice && (
                     <div className="mt-1 text-sm text-slate-500">

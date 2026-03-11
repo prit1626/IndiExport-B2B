@@ -73,6 +73,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/terms").permitAll()
 
+                        .requestMatchers(HttpMethod.GET, "/api/v1/reviews/product/**").permitAll()
                         .requestMatchers("/health", "/health/**").permitAll()
                         .requestMatchers("/actuator", "/actuator/**").permitAll()
                         .requestMatchers("/api/test-dispute/**").permitAll()
@@ -97,7 +98,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173", // Vite dev server
+                "http://localhost:5173",// Vite dev server
+                "http://localhost:5174",
                 "http://localhost:3000", // Alternative React dev port
                 "http://localhost:8081" // Local testing
         // Add production URL when deployed

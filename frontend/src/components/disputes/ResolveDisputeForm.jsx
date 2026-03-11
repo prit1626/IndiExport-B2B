@@ -11,9 +11,9 @@ const ResolveDisputeForm = ({ disputeId, onResolve }) => {
     const onSubmit = async (data) => {
         try {
             await disputeApi.adminResolveDispute(disputeId, {
-                action: data.action,
-                amountINRPaise: data.amount ? Math.round(data.amount * 100) : 0, // Convert to paise
-                notes: data.notes
+                resolutionAction: data.action,
+                partialRefundAmountMinor: data.amount ? Math.round(data.amount * 100) : null, // Convert to paise
+                resolutionNotes: data.notes
             });
             toast.success('Dispute resolved successfully');
             if (onResolve) onResolve();

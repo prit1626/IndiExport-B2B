@@ -1,8 +1,11 @@
 import React from 'react';
 import { CheckCircle2, Factory, Clock, Box, ShieldCheck, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 
 const QuoteCard = ({ quote, isSelected, onSelect }) => {
+    const currency = getBuyerCurrency();
     return (
         <motion.div
             layout
@@ -43,7 +46,7 @@ const QuoteCard = ({ quote, isSelected, onSelect }) => {
             <div className="mb-4">
                 <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Quoted Price</p>
                 <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-slate-900">₹{(quote.priceINRPaise / 100).toLocaleString()}</span>
+                    <span className="text-2xl font-bold text-slate-900">{formatCurrency(quote.priceINRPaise / 100, currency)}</span>
                     <span className="text-sm text-slate-500">/ unit</span>
                 </div>
             </div>

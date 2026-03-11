@@ -1,7 +1,9 @@
 import React from 'react';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 
-const OrderItemsTable = ({ items, currency }) => {
+const OrderItemsTable = ({ items }) => {
+    const currency = getBuyerCurrency();
     return (
         <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -35,16 +37,10 @@ const OrderItemsTable = ({ items, currency }) => {
                                 {item.qty}
                             </td>
                             <td className="py-4 px-4 text-right text-slate-600 text-sm">
-                                {item.convertedPriceMinor
-                                    ? formatMoney(item.convertedPriceMinor, currency)
-                                    : formatMoney(item.basePriceINRPaise, 'INR')
-                                }
+                                {formatCurrency(item.basePriceINRPaise / 100, currency)}
                             </td>
                             <td className="py-4 px-4 text-right font-medium text-slate-900 text-sm">
-                                {item.convertedPriceMinor
-                                    ? formatMoney(item.convertedPriceMinor * item.qty, currency)
-                                    : formatMoney(item.basePriceINRPaise * item.qty, 'INR')
-                                }
+                                {formatCurrency((item.basePriceINRPaise * item.qty) / 100, currency)}
                             </td>
                         </tr>
                     ))}

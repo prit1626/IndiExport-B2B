@@ -2,10 +2,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Truck, ArrowRight, Calendar } from 'lucide-react';
 import OrderStatusBadge from './OrderStatusBadge';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 import { formatShortDate } from '../../utils/formatDate';
 
 const OrderCard = ({ order }) => {
+    const currency = getBuyerCurrency();
     const navigate = useNavigate();
 
     return (
@@ -27,10 +29,7 @@ const OrderCard = ({ order }) => {
                 <div className="text-right">
                     <p className="text-sm text-slate-500">Total Amount</p>
                     <p className="font-bold text-slate-900 text-lg">
-                        {order.grandTotalConvertedMinor != null
-                            ? formatMoney(order.grandTotalConvertedMinor, order.currency)
-                            : formatMoney(order.grandTotalINRPaise, 'INR')
-                        }
+                        {formatCurrency(order.grandTotalINRPaise / 100, currency)}
                     </p>
                 </div>
             </div>
