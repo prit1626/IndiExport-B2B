@@ -17,7 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Design:
  * - ConcurrentHashMap for O(1) reads
  * - Per-currency ReentrantLock to prevent thundering herd on cache miss
- *   (only ONE thread fetches while others wait on the same currency lock)
+ * (only ONE thread fetches while others wait on the same currency lock)
  * - TTL-based expiration (default 12 hours)
  * - Falls back to stale cached rate if external API fails and cache exists
  */
@@ -26,15 +26,15 @@ public class ExchangeRateCacheService {
 
     private static final Logger log = LoggerFactory.getLogger(ExchangeRateCacheService.class);
 
-    private final FrankfurterExchangeRateClient exchangeRateClient;
+    private final ExchangeRateApiClient exchangeRateClient;
     private final long ttlMinutes;
 
     private final ConcurrentHashMap<String, CachedRate> cache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
 
     public ExchangeRateCacheService(
-            FrankfurterExchangeRateClient exchangeRateClient,
-            @Value("${currency.cache.ttl-minutes:30}") long ttlMinutes) {
+            ExchangeRateApiClient exchangeRateClient,
+            @Value("${currency.cache.ttl-minutes:1440}") long ttlMinutes) {
         this.exchangeRateClient = exchangeRateClient;
         this.ttlMinutes = ttlMinutes;
     }
@@ -73,8 +73,7 @@ public class ExchangeRateCacheService {
                 CachedRate fresh = new CachedRate(
                         rateMicros,
                         Instant.now(),
-                        exchangeRateClient.getProviderName()
-                );
+                        exchangeRateClient.getProviderName());
                 cache.put(key, fresh);
                 log.info("Cached fresh rate for {}: rateMicros={}", key, rateMicros);
                 return fresh;
@@ -104,8 +103,8 @@ public class ExchangeRateCacheService {
      * Immutable cached rate record.
      */
     public record CachedRate(
-            long rateMicros,      // rate * 1_000_000 (e.g. 0.01195 → 11950)
+            long rateMicros, // rate * 1_000_000 (e.g. 0.01195 → 11950)
             Instant fetchedAt,
-            String providerName
-    ) {}
+            String providerName) {
+    }
 }

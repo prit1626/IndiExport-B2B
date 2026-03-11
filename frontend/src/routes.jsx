@@ -17,6 +17,7 @@ import ProductListingPage from './pages/public/ProductListingPage';
 import ProductDetailsPage from './pages/public/ProductDetailsPage';
 import PublicSellerProfilePage from './pages/public/PublicSellerProfilePage';
 import TermsPage from './pages/public/TermsPage';
+import SearchResultsPage from './pages/public/SearchResultsPage';
 
 // Buyer Pages
 import BuyerDashboardPage from './pages/buyer/BuyerDashboardPage';
@@ -82,6 +83,7 @@ export const appRoutes = [
             { index: true, element: <HomePage /> },
             { path: 'products', element: <ProductListingPage /> },
             { path: 'products/:id', element: <ProductDetailsPage /> },
+            { path: 'search', element: <SearchResultsPage /> },
             { path: 'sellers/:id', element: <PublicSellerProfilePage /> },
             { path: 'terms', element: <TermsPage /> },
             { path: 'auth/login', element: <LoginPage /> },

@@ -25,6 +25,7 @@ const rfqApi = {
     /** Browse all public RFQs (with filters) */
     browseRfqs: (params) => axiosClient.get('/seller/rfq', { params }),
     sellerGetRfqs: (params) => axiosClient.get('/seller/rfq', { params }),
+    sellerGetRecommendedRfqs: (params) => axiosClient.get('/seller/rfq/recommended', { params }),
 
     /** Get a single RFQ detail (for seller view) */
     getRfqForSeller: (rfqId) => axiosClient.get(`/seller/rfq/${rfqId}`),

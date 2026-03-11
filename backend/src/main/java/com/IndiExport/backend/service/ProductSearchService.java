@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
 public class ProductSearchService {
 
     private final ProductRepository productRepository;
-    private final com.IndiExport.backend.service.currency.CurrencyConversionService currencyConversionService;
+    private final com.IndiExport.backend.service.currency.CurrencyService currencyService;
+
     @Transactional(readOnly = true)
     public Page<ProductDto.BuyerProductCardResponse> searchProducts(
             ProductDto.ProductFilterRequest filter, String targetCurrency) {
@@ -39,15 +40,8 @@ public class ProductSearchService {
                     // Enrich with converted price if currency is specified
                     if (targetCurrency != null && !targetCurrency.isBlank()) {
                         try {
-                            var result = currencyConversionService.convertFromINR(
-                                    product.getPricePaise(), targetCurrency);
-                            card.setConvertedPrice(
-                                    com.IndiExport.backend.dto.CurrencyDto.ConvertedPriceInfo.builder()
-                                            .convertedPriceMinor(result.convertedAmountMinor())
-                                            .currency(result.targetCurrency())
-                                            .exchangeRateMicros(result.exchangeRateMicros())
-                                            .rateTimestamp(result.rateTimestamp())
-                                            .build());
+                            card.setConvertedPrice(currencyService.convertFromINR(
+                                    product.getPricePaise(), targetCurrency));
                         } catch (Exception e) {
                             // Price conversion failed, skip enrichment
                         }
@@ -73,12 +67,12 @@ public class ProductSearchService {
             if (StringUtils.hasText(filter.getKeyword())) {
                 String pattern = "%" + filter.getKeyword().toLowerCase() + "%";
                 Join<Product, Tag> tagsJoin = root.join("tags", JoinType.LEFT);
-                
+
                 Predicate namePred = cb.like(cb.lower(root.get("name")), pattern);
                 Predicate descPred = cb.like(cb.lower(root.get("description")), pattern);
                 Predicate brandPred = cb.like(cb.lower(root.get("brand")), pattern);
                 Predicate tagPred = cb.like(cb.lower(tagsJoin.get("name")), pattern);
-                
+
                 predicates.add(cb.or(namePred, descPred, brandPred, tagPred));
             }
 
@@ -149,7 +143,7 @@ public class ProductSearchService {
 
     private Pageable createPageable(ProductDto.ProductFilterRequest filter) {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdAt"); // Default: newest
-        
+
         if (filter.getSortBy() != null) {
             switch (filter.getSortBy()) {
                 case "priceAsc":
@@ -166,17 +160,17 @@ public class ProductSearchService {
                     break;
             }
         }
-        
+
         return PageRequest.of(filter.getPage(), filter.getSize(), sort);
     }
 
     private ProductDto.BuyerProductCardResponse mapToCardResponse(Product product) {
-        String thumbnail = product.getMedia() != null && !product.getMedia().isEmpty() 
+        String thumbnail = product.getMedia() != null && !product.getMedia().isEmpty()
                 ? product.getMedia().stream()
-                    .filter(m -> m.getMediaType() == ProductMedia.MediaType.IMAGE)
-                    .findFirst()
-                    .map(ProductMedia::getMediaUrl)
-                    .orElse(null)
+                        .filter(m -> m.getMediaType() == ProductMedia.MediaType.IMAGE)
+                        .findFirst()
+                        .map(ProductMedia::getMediaUrl)
+                        .orElse(null)
                 : null;
 
         return ProductDto.BuyerProductCardResponse.builder()

@@ -33,6 +33,8 @@ export default function BuyerRfqCreatePage() {
     const [form, setForm] = useState({
         title: '', details: '', quantity: '', unit: 'PCS',
         destinationCountry: '',
+        shippingMode: 'AIR',
+        incoterm: 'FOB',
         targetPriceMinor: '', targetCurrency: 'USD', mediaUrls: [],
     });
 
@@ -40,11 +42,15 @@ export default function BuyerRfqCreatePage() {
         const fetchProfile = async () => {
             try {
                 const res = await profileApi.getBuyerProfile();
-                if (res.data?.country) {
-                    setForm(f => ({ ...f, destinationCountry: res.data.country }));
+                if (res.data) {
+                    setForm(f => ({
+                        ...f,
+                        destinationCountry: res.data.country || '',
+                        targetCurrency: res.data.preferredCurrency || 'USD'
+                    }));
                 }
             } catch (err) {
-                console.error("Failed to fetch buyer profile for country default", err);
+                console.error("Failed to fetch buyer profile for RFQ defaults", err);
             }
         };
         fetchProfile();
@@ -202,6 +208,20 @@ export default function BuyerRfqCreatePage() {
                                 />
                                 <p className="text-xs text-slate-400 mt-1">Sourced automatically from your profile</p>
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelCls}>Shipping Mode <span className="text-red-500">*</span></label>
+                                    <select className={selectCls} value={form.shippingMode} onChange={set('shippingMode')}>
+                                        {['AIR', 'SEA', 'ROAD', 'COURIER'].map(m => <option key={m}>{m}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Incoterm <span className="text-red-500">*</span></label>
+                                    <select className={selectCls} value={form.incoterm} onChange={set('incoterm')}>
+                                        {['EXW', 'FCA', 'FAS', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP'].map(i => <option key={i}>{i}</option>)}
+                                    </select>
+                                </div>
+                            </div>
                         </>
                     )}
 
@@ -218,9 +238,19 @@ export default function BuyerRfqCreatePage() {
                                 </div>
                                 <div>
                                     <label className={labelCls}>Target Currency</label>
-                                    <select className={selectCls} value={form.targetCurrency} onChange={set('targetCurrency')}>
-                                        {['USD', 'EUR', 'GBP', 'AED', 'JPY', 'INR'].map(c => <option key={c}>{c}</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            className={`${selectCls} bg-slate-100 text-slate-500 cursor-not-allowed pr-10`}
+                                            value={form.targetCurrency}
+                                            disabled
+                                        >
+                                            {['USD', 'EUR', 'GBP', 'AED', 'JPY', 'INR'].map(c => <option key={c}>{c}</option>)}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                            <span className="text-slate-400">🔒</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1 italic">Locked to your profile currency</p>
                                 </div>
                             </div>
                             <div className="bg-brand-50 rounded-xl p-4 text-sm text-brand-700 border border-brand-100">

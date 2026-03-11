@@ -23,6 +23,7 @@ const SellerRfqBrowsePage = () => {
     };
 
     const [filters, setFilters] = useState(initialFilters);
+    const [tab, setTab] = useState('RECOMMENDED'); // Default to RECOMMENDED
     const [rfqs, setRfqs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalElements, setTotalElements] = useState(0);
@@ -37,13 +38,25 @@ const SellerRfqBrowsePage = () => {
                     Object.entries(filters).filter(([_, v]) => v != null && v !== '')
                 );
 
-                const { data } = await rfqApi.sellerGetRfqs(params);
+                let response;
+                if (tab === 'RECOMMENDED') {
+                    // Recommended RFQs might not use all filters, but let's pass them just in case (e.g. pagination)
+                    response = await rfqApi.sellerGetRecommendedRfqs({ page: params.page, size: params.size, sort: params.sort });
+                } else {
+                    response = await rfqApi.sellerGetRfqs(params);
+                }
+
+                const { data } = response;
                 setRfqs(data.content || []);
                 setTotalElements(data.totalElements);
                 setTotalPages(data.totalPages);
 
-                // Update URL (silent replace)
-                setSearchParams(params, { replace: true });
+                // Update URL (silent replace) - only for ALL tab as RECOMMENDED is dynamic
+                if (tab === 'ALL') {
+                    setSearchParams(params, { replace: true });
+                } else {
+                    setSearchParams({ tab: 'recommended', page: params.page }, { replace: true });
+                }
 
             } catch (error) {
                 console.error(error);
@@ -54,10 +67,15 @@ const SellerRfqBrowsePage = () => {
         };
 
         fetchRfqs();
-    }, [filters]);
+    }, [filters, tab]);
 
     const handleFilterChange = (newFilters) => {
         setFilters(prev => ({ ...prev, ...newFilters }));
+    };
+
+    const handleTabChange = (newTab) => {
+        setTab(newTab);
+        setFilters(prev => ({ ...prev, page: 0 })); // Reset page when switching tabs
     };
 
     const handlePageChange = (newPage) => {
@@ -74,15 +92,60 @@ const SellerRfqBrowsePage = () => {
                     {/* Sidebar Filters */}
                     <div className="w-full md:w-64 flex-shrink-0">
                         <div className="sticky top-24">
-                            <RfqFilters filters={filters} onFilterChange={handleFilterChange} />
+                            {tab === 'ALL' ? (
+                                <RfqFilters filters={filters} onFilterChange={handleFilterChange} />
+                            ) : (
+                                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                    <h3 className="font-semibold text-slate-900 mb-2">Recommendation Engine</h3>
+                                    <p className="text-sm text-slate-500 leading-relaxed">
+                                        We match your business based on your active product names, descriptions, and tags.
+                                    </p>
+                                    <div className="mt-4 pt-4 border-t border-slate-100">
+                                        <p className="text-xs text-slate-400">
+                                            Update your products to get more accurate recommendations.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Main Content */}
                     <div className="flex-1">
-                        <header className="mb-6 flex justify-between items-center">
-                            <h1 className="text-2xl font-bold text-slate-800">Browse Requests</h1>
-                            <span className="text-sm text-slate-500">{totalElements} Request{totalElements !== 1 ? 's' : ''} found</span>
+                        <header className="mb-6">
+                            <h1 className="text-2xl font-bold text-slate-800 mb-6">Browse Requests</h1>
+                            
+                            <div className="flex items-center justify-between border-b border-slate-200">
+                                <div className="flex gap-8">
+                                    <button
+                                        onClick={() => handleTabChange('RECOMMENDED')}
+                                        className={`pb-4 text-sm font-medium transition-colors relative ${
+                                            tab === 'RECOMMENDED' 
+                                            ? 'text-brand-600' 
+                                            : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        Recommended RFQs
+                                        {tab === 'RECOMMENDED' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => handleTabChange('ALL')}
+                                        className={`pb-4 text-sm font-medium transition-colors relative ${
+                                            tab === 'ALL' 
+                                            ? 'text-brand-600' 
+                                            : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        All RFQs
+                                        {tab === 'ALL' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />
+                                        )}
+                                    </button>
+                                </div>
+                                <span className="pb-4 text-sm text-slate-500">{totalElements} Request{totalElements !== 1 ? 's' : ''} found</span>
+                            </div>
                         </header>
 
                         {loading ? (
@@ -124,13 +187,19 @@ const SellerRfqBrowsePage = () => {
                             <div className="flex flex-col items-center justify-center py-12 bg-white rounded-xl border border-slate-200">
                                 <PackageOpen size={48} className="text-slate-300 mb-4" />
                                 <h3 className="text-lg font-semibold text-slate-900">No requests found</h3>
-                                <p className="text-slate-500">Try adjusting your filters to find more opportunities.</p>
-                                <button
-                                    onClick={() => handleFilterChange({ keyword: '', minQty: '', destinationCountry: '', page: 0 })}
-                                    className="mt-4 text-brand-600 font-medium hover:underline"
-                                >
-                                    Clear all filters
-                                </button>
+                                <p className="text-slate-500">
+                                    {tab === 'RECOMMENDED' 
+                                        ? "We couldn't find any RFQs matching your products yet." 
+                                        : "Try adjusting your filters to find more opportunities."}
+                                </p>
+                                {tab === 'ALL' && (
+                                    <button
+                                        onClick={() => handleFilterChange({ keyword: '', minQty: '', destinationCountry: '', page: 0 })}
+                                        className="mt-4 text-brand-600 font-medium hover:underline"
+                                    >
+                                        Clear all filters
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

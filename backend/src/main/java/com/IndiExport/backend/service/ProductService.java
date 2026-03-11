@@ -9,7 +9,6 @@ import com.IndiExport.backend.entity.Tag;
 import com.IndiExport.backend.entity.User;
 import com.IndiExport.backend.exception.ResourceNotFoundException;
 import com.IndiExport.backend.exception.ProductExceptions;
-import com.IndiExport.backend.exception.ForbiddenException;
 import com.IndiExport.backend.repository.CategoryRepository;
 import com.IndiExport.backend.repository.ProductRepository;
 import com.IndiExport.backend.repository.SellerProfileRepository;
@@ -34,22 +33,22 @@ public class ProductService {
     private final TagRepository tagRepository;
     private final SellerPlanService sellerPlanService;
     private final UserRepository userRepository;
-    private final com.IndiExport.backend.service.currency.CurrencyConversionService currencyConversionService;
+    private final com.IndiExport.backend.service.currency.CurrencyService currencyService;
 
     public ProductService(ProductRepository productRepository,
-                          SellerProfileRepository sellerProfileRepository,
-                          CategoryRepository categoryRepository,
-                          TagRepository tagRepository,
-                          SellerPlanService sellerPlanService,
-                          UserRepository userRepository,
-                          com.IndiExport.backend.service.currency.CurrencyConversionService currencyConversionService) {
+            SellerProfileRepository sellerProfileRepository,
+            CategoryRepository categoryRepository,
+            TagRepository tagRepository,
+            SellerPlanService sellerPlanService,
+            UserRepository userRepository,
+            com.IndiExport.backend.service.currency.CurrencyService currencyService) {
         this.productRepository = productRepository;
         this.sellerProfileRepository = sellerProfileRepository;
         this.categoryRepository = categoryRepository;
         this.tagRepository = tagRepository;
         this.sellerPlanService = sellerPlanService;
         this.userRepository = userRepository;
-        this.currencyConversionService = currencyConversionService;
+        this.currencyService = currencyService;
     }
 
     @Transactional
@@ -61,7 +60,8 @@ public class ProductService {
         if (request.getStatus() == Product.ProductStatus.ACTIVE) {
             // RELAXED FOR DEV: Allow unverified sellers to list products
             // if (!seller.isVerified()) {
-            //    throw new ForbiddenException("Seller must be verified to list active products");
+            // throw new ForbiddenException("Seller must be verified to list active
+            // products");
             // }
             sellerPlanService.validateActiveProductLimit(seller.getId());
         }
@@ -95,7 +95,8 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDto.ProductResponse updateProduct(UUID userId, UUID productId, ProductDto.ProductUpdateRequest request) {
+    public ProductDto.ProductResponse updateProduct(UUID userId, UUID productId,
+            ProductDto.ProductUpdateRequest request) {
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", productId.toString()));
 
@@ -104,29 +105,46 @@ public class ProductService {
         }
 
         // Check plan limit if status is changing to ACTIVE
-        if (request.getStatus() == Product.ProductStatus.ACTIVE && product.getStatus() != Product.ProductStatus.ACTIVE) {
+        if (request.getStatus() == Product.ProductStatus.ACTIVE
+                && product.getStatus() != Product.ProductStatus.ACTIVE) {
             // RELAXED FOR DEV: Allow unverified sellers to list products
             // if (!product.getSeller().isVerified()) {
-            //    throw new ForbiddenException("Seller must be verified to list active products");
+            // throw new ForbiddenException("Seller must be verified to list active
+            // products");
             // }
             sellerPlanService.validateActiveProductLimit(product.getSeller().getId());
         }
 
-        if (request.getTitle() != null) product.setName(request.getTitle());
-        if (request.getBrand() != null) product.setBrand(request.getBrand());
-        if (request.getDescription() != null) product.setDescription(request.getDescription());
-        if (request.getPricePaise() != null) product.setPricePaise(request.getPricePaise());
-        if (request.getMinQty() != null) product.setMinimumOrderQuantity(request.getMinQty());
-        if (request.getUnit() != null) product.setQuantityUnit(request.getUnit());
-        if (request.getWeightGrams() != null) product.setWeightGrams(request.getWeightGrams());
-        if (request.getLengthMm() != null) product.setLengthMm(request.getLengthMm());
-        if (request.getWidthMm() != null) product.setWidthMm(request.getWidthMm());
-        if (request.getHeightMm() != null) product.setHeightMm(request.getHeightMm());
-        if (request.getHsCode() != null) product.setHsCode(request.getHsCode());
-        if (request.getIncoterm() != null) product.setIncoterm(request.getIncoterm());
-        if (request.getLeadTimeDays() != null) product.setLeadTimeDays(request.getLeadTimeDays());
-        if (request.getStockQuantity() != null) product.setStockQuantity(request.getStockQuantity());
-        if (request.getStatus() != null) product.setStatus(request.getStatus());
+        if (request.getTitle() != null)
+            product.setName(request.getTitle());
+        if (request.getBrand() != null)
+            product.setBrand(request.getBrand());
+        if (request.getDescription() != null)
+            product.setDescription(request.getDescription());
+        if (request.getPricePaise() != null)
+            product.setPricePaise(request.getPricePaise());
+        if (request.getMinQty() != null)
+            product.setMinimumOrderQuantity(request.getMinQty());
+        if (request.getUnit() != null)
+            product.setQuantityUnit(request.getUnit());
+        if (request.getWeightGrams() != null)
+            product.setWeightGrams(request.getWeightGrams());
+        if (request.getLengthMm() != null)
+            product.setLengthMm(request.getLengthMm());
+        if (request.getWidthMm() != null)
+            product.setWidthMm(request.getWidthMm());
+        if (request.getHeightMm() != null)
+            product.setHeightMm(request.getHeightMm());
+        if (request.getHsCode() != null)
+            product.setHsCode(request.getHsCode());
+        if (request.getIncoterm() != null)
+            product.setIncoterm(request.getIncoterm());
+        if (request.getLeadTimeDays() != null)
+            product.setLeadTimeDays(request.getLeadTimeDays());
+        if (request.getStockQuantity() != null)
+            product.setStockQuantity(request.getStockQuantity());
+        if (request.getStatus() != null)
+            product.setStatus(request.getStatus());
 
         if (request.getCategoryIds() != null || request.getTagNames() != null) {
             mapCategoriesAndTags(product, request.getCategoryIds(), request.getTagNames());
@@ -140,7 +158,7 @@ public class ProductService {
     public List<ProductDto.ProductResponse> getSellerProducts(UUID userId) {
         SellerProfile seller = sellerProfileRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("SellerProfile", userId.toString()));
-        
+
         return productRepository.findAllActiveBySeller(seller.getId())
                 .stream()
                 .map(this::mapToResponse)
@@ -150,16 +168,17 @@ public class ProductService {
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<ProductDto.ProductResponse> getSellerProducts(
             UUID userId, int page, int size, String keyword, String statusStr) {
-        
+
         System.out.println("DEBUG: getSellerProducts called for userId: " + userId);
-        
+
         SellerProfile seller = sellerProfileRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("SellerProfile", userId.toString()));
         System.out.println("DEBUG: Resolved sellerId: " + seller.getId());
 
         // Fetch ALL active products (or all non-deleted)
         // Using derived query method which is safer
-        List<Product> allProducts = productRepository.findBySellerIdAndStatusNot(seller.getId(), Product.ProductStatus.DELETED);
+        List<Product> allProducts = productRepository.findBySellerIdAndStatusNot(seller.getId(),
+                Product.ProductStatus.DELETED);
         System.out.println("DEBUG: Found " + allProducts.size() + " products in DB for seller.");
 
         // Filter by status in memory
@@ -173,13 +192,13 @@ public class ProductService {
                 // Ignore
             }
         }
-        
+
         // Filter by keyword in memory
         if (keyword != null && !keyword.isBlank()) {
             String lowerKw = keyword.toLowerCase();
             allProducts = allProducts.stream()
-                    .filter(p -> p.getName().toLowerCase().contains(lowerKw) || 
-                                 (p.getBrand() != null && p.getBrand().toLowerCase().contains(lowerKw)))
+                    .filter(p -> p.getName().toLowerCase().contains(lowerKw) ||
+                            (p.getBrand() != null && p.getBrand().toLowerCase().contains(lowerKw)))
                     .collect(Collectors.toList());
         }
 
@@ -187,16 +206,17 @@ public class ProductService {
         allProducts.sort((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()));
 
         // Paginate
-        int start = Math.min((int)org.springframework.data.domain.PageRequest.of(page, size).getOffset(), allProducts.size());
+        int start = Math.min((int) org.springframework.data.domain.PageRequest.of(page, size).getOffset(),
+                allProducts.size());
         int end = Math.min((start + size), allProducts.size());
-        
+
         List<ProductDto.ProductResponse> userPageContent = allProducts.subList(start, end).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
 
         return new org.springframework.data.domain.PageImpl<>(
-                userPageContent, 
-                org.springframework.data.domain.PageRequest.of(page, size), 
+                userPageContent,
+                org.springframework.data.domain.PageRequest.of(page, size),
                 allProducts.size());
     }
 
@@ -214,12 +234,7 @@ public class ProductService {
         // Enrich with converted price if a target currency is specified
         if (targetCurrency != null && !targetCurrency.isBlank()) {
             try {
-                var result = currencyConversionService.convertFromINR(product.getPricePaise(), targetCurrency);
-                com.IndiExport.backend.dto.CurrencyDto.ConvertedPriceInfo convertedPrice = new com.IndiExport.backend.dto.CurrencyDto.ConvertedPriceInfo();
-                convertedPrice.setConvertedPriceMinor(result.convertedAmountMinor());
-                convertedPrice.setCurrency(result.targetCurrency());
-                convertedPrice.setExchangeRateMicros(result.exchangeRateMicros());
-                convertedPrice.setRateTimestamp(result.rateTimestamp());
+                var convertedPrice = currencyService.convertFromINR(product.getPricePaise(), targetCurrency);
                 response.setConvertedPrice(convertedPrice);
             } catch (Exception e) {
                 // Return product without converted price rather than failing
@@ -279,7 +294,7 @@ public class ProductService {
         response.setLeadTimeDays(product.getLeadTimeDays());
         response.setStockQuantity(product.getStockQuantity());
         response.setStatus(product.getStatus());
-        
+
         response.setCategories(product.getCategories().stream()
                 .map(c -> {
                     CategoryDto.CategoryResponse cr = new CategoryDto.CategoryResponse();
@@ -289,9 +304,9 @@ public class ProductService {
                     return cr;
                 })
                 .collect(Collectors.toList()));
-        
+
         response.setTags(product.getTags().stream().map(Tag::getName).collect(Collectors.toList()));
-        
+
         response.setMedia(product.getMedia() != null ? product.getMedia().stream()
                 .map(m -> {
                     ProductDto.ProductMediaResponse pmr = new ProductDto.ProductMediaResponse();
@@ -302,16 +317,15 @@ public class ProductService {
                     return pmr;
                 })
                 .collect(Collectors.toList()) : List.of());
-        
+
         response.setAverageRating(product.getAverageRatingMilli() / 1000.0);
         response.setTotalReviews(product.getTotalReviews());
-        
+
         if (product.getSeller() != null) {
             response.setSeller(new ProductDto.SellerBasicInfo(
                     product.getSeller().getId(),
                     product.getSeller().getCompanyName(),
-                    product.getSeller().isVerified()
-            ));
+                    product.getSeller().isVerified()));
         }
 
         return response;

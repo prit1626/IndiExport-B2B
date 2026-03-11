@@ -24,39 +24,112 @@ public class SellerQuoteResponse {
     private String notes;
     private Instant validityUntil;
     private RfqQuoteStatus status;
+    private Long convertedPriceMinor;
+    private String targetCurrency;
     private Instant createdAt;
 
     // Manual Getters/Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public UUID getSellerId() { return sellerId; }
-    public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getSellerName() { return sellerName; }
-    public void setSellerName(String sellerName) { this.sellerName = sellerName; }
+    public UUID getSellerId() {
+        return sellerId;
+    }
 
-    public boolean isVerifiedSeller() { return isVerifiedSeller; }
-    public void setVerifiedSeller(boolean verifiedSeller) { isVerifiedSeller = verifiedSeller; }
+    public void setSellerId(UUID sellerId) {
+        this.sellerId = sellerId;
+    }
 
-    public long getQuotedPriceInrPaise() { return quotedPriceInrPaise; }
-    public void setQuotedPriceInrPaise(long quotedPriceInrPaise) { this.quotedPriceInrPaise = quotedPriceInrPaise; }
+    public String getSellerName() {
+        return sellerName;
+    }
 
-    public Long getShippingEstimateInrPaise() { return shippingEstimateInrPaise; }
-    public void setShippingEstimateInrPaise(Long shippingEstimateInrPaise) { this.shippingEstimateInrPaise = shippingEstimateInrPaise; }
+    public void setSellerName(String sellerName) {
+        this.sellerName = sellerName;
+    }
 
-    public Integer getLeadTimeDays() { return leadTimeDays; }
-    public void setLeadTimeDays(Integer leadTimeDays) { this.leadTimeDays = leadTimeDays; }
+    public boolean isVerifiedSeller() {
+        return isVerifiedSeller;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public void setVerifiedSeller(boolean verifiedSeller) {
+        isVerifiedSeller = verifiedSeller;
+    }
 
-    public Instant getValidityUntil() { return validityUntil; }
-    public void setValidityUntil(Instant validityUntil) { this.validityUntil = validityUntil; }
+    public long getQuotedPriceInrPaise() {
+        return quotedPriceInrPaise;
+    }
 
-    public RfqQuoteStatus getStatus() { return status; }
-    public void setStatus(RfqQuoteStatus status) { this.status = status; }
+    public void setQuotedPriceInrPaise(long quotedPriceInrPaise) {
+        this.quotedPriceInrPaise = quotedPriceInrPaise;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Long getShippingEstimateInrPaise() {
+        return shippingEstimateInrPaise;
+    }
+
+    public void setShippingEstimateInrPaise(Long shippingEstimateInrPaise) {
+        this.shippingEstimateInrPaise = shippingEstimateInrPaise;
+    }
+
+    public Integer getLeadTimeDays() {
+        return leadTimeDays;
+    }
+
+    public void setLeadTimeDays(Integer leadTimeDays) {
+        this.leadTimeDays = leadTimeDays;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public Instant getValidityUntil() {
+        return validityUntil;
+    }
+
+    public void setValidityUntil(Instant validityUntil) {
+        this.validityUntil = validityUntil;
+    }
+
+    public RfqQuoteStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(RfqQuoteStatus status) {
+        this.status = status;
+    }
+
+    public Long getConvertedPriceMinor() {
+        return convertedPriceMinor;
+    }
+
+    public void setConvertedPriceMinor(Long convertedPriceMinor) {
+        this.convertedPriceMinor = convertedPriceMinor;
+    }
+
+    public String getTargetCurrency() {
+        return targetCurrency;
+    }
+
+    public void setTargetCurrency(String targetCurrency) {
+        this.targetCurrency = targetCurrency;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 }

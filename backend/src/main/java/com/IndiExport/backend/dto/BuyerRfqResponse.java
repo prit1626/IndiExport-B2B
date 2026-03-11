@@ -28,56 +28,140 @@ public class BuyerRfqResponse {
     private Incoterm incoterm;
     private Long targetPriceMinor;
     private String targetCurrency;
+    private Long targetPriceINRPaise;
     private RfqStatus status;
     private Instant createdAt;
-    
+
     private List<RfqMediaResponse> media;
     private int quoteCount;
     private List<SellerQuoteResponse> quotes; // Only visible if desired, or separate endpoint
 
     // Manual Getters/Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getDetails() { return details; }
-    public void setDetails(String details) { this.details = details; }
+    public String getTitle() {
+        return title;
+    }
 
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    public String getUnit() { return unit; }
-    public void setUnit(String unit) { this.unit = unit; }
+    public String getDetails() {
+        return details;
+    }
 
-    public String getDestinationCountry() { return destinationCountry; }
-    public void setDestinationCountry(String destinationCountry) { this.destinationCountry = destinationCountry; }
+    public void setDetails(String details) {
+        this.details = details;
+    }
 
-    public ShippingMode getShippingMode() { return shippingMode; }
-    public void setShippingMode(ShippingMode shippingMode) { this.shippingMode = shippingMode; }
+    public int getQuantity() {
+        return quantity;
+    }
 
-    public Incoterm getIncoterm() { return incoterm; }
-    public void setIncoterm(Incoterm incoterm) { this.incoterm = incoterm; }
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
 
-    public Long getTargetPriceMinor() { return targetPriceMinor; }
-    public void setTargetPriceMinor(Long targetPriceMinor) { this.targetPriceMinor = targetPriceMinor; }
+    public String getUnit() {
+        return unit;
+    }
 
-    public String getTargetCurrency() { return targetCurrency; }
-    public void setTargetCurrency(String targetCurrency) { this.targetCurrency = targetCurrency; }
+    public void setUnit(String unit) {
+        this.unit = unit;
+    }
 
-    public RfqStatus getStatus() { return status; }
-    public void setStatus(RfqStatus status) { this.status = status; }
+    public String getDestinationCountry() {
+        return destinationCountry;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setDestinationCountry(String destinationCountry) {
+        this.destinationCountry = destinationCountry;
+    }
 
-    public List<RfqMediaResponse> getMedia() { return media; }
-    public void setMedia(List<RfqMediaResponse> media) { this.media = media; }
-    
-    public int getQuoteCount() { return quoteCount; }
-    public void setQuoteCount(int quoteCount) { this.quoteCount = quoteCount; }
+    public ShippingMode getShippingMode() {
+        return shippingMode;
+    }
 
-    public List<SellerQuoteResponse> getQuotes() { return quotes; }
-    public void setQuotes(List<SellerQuoteResponse> quotes) { this.quotes = quotes; }
+    public void setShippingMode(ShippingMode shippingMode) {
+        this.shippingMode = shippingMode;
+    }
+
+    public Incoterm getIncoterm() {
+        return incoterm;
+    }
+
+    public void setIncoterm(Incoterm incoterm) {
+        this.incoterm = incoterm;
+    }
+
+    public Long getTargetPriceMinor() {
+        return targetPriceMinor;
+    }
+
+    public void setTargetPriceMinor(Long targetPriceMinor) {
+        this.targetPriceMinor = targetPriceMinor;
+    }
+
+    public String getTargetCurrency() {
+        return targetCurrency;
+    }
+
+    public void setTargetCurrency(String targetCurrency) {
+        this.targetCurrency = targetCurrency;
+    }
+
+    public Long getTargetPriceINRPaise() {
+        return targetPriceINRPaise;
+    }
+
+    public void setTargetPriceINRPaise(Long targetPriceINRPaise) {
+        this.targetPriceINRPaise = targetPriceINRPaise;
+    }
+
+    public RfqStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(RfqStatus status) {
+        this.status = status;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public List<RfqMediaResponse> getMedia() {
+        return media;
+    }
+
+    public void setMedia(List<RfqMediaResponse> media) {
+        this.media = media;
+    }
+
+    public int getQuoteCount() {
+        return quoteCount;
+    }
+
+    public void setQuoteCount(int quoteCount) {
+        this.quoteCount = quoteCount;
+    }
+
+    public List<SellerQuoteResponse> getQuotes() {
+        return quotes;
+    }
+
+    public void setQuotes(List<SellerQuoteResponse> quotes) {
+        this.quotes = quotes;
+    }
 }
