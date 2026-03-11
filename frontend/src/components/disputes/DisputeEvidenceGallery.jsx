@@ -17,11 +17,11 @@ const DisputeEvidenceGallery = ({ evidence = [] }) => {
                 {evidence.map((item, index) => (
                     <div
                         key={index}
-                        onClick={() => setSelectedImage(item.url)}
+                        onClick={() => setSelectedImage(item.fileUrl)}
                         className="aspect-square rounded-lg overflow-hidden border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity bg-slate-50"
                     >
                         <img
-                            src={item.url}
+                            src={item.fileUrl}
                             alt={`Evidence ${index + 1}`}
                             className="w-full h-full object-cover"
                         />
