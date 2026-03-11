@@ -5,7 +5,7 @@ import { ShoppingCart, Truck, CheckCircle, TrendingUp, Package } from 'lucide-re
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 import analyticsApi from '../../api/analyticsApi';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatDynamicCurrency, convertFromPaise, formatCurrencyValue, getBuyerCurrency } from '../../utils/currencyUtils';
 import { calculateDateRange } from '../../utils/dateUtils';
 
 import DashboardHeader from '../../components/analytics/DashboardHeader';
@@ -21,6 +21,7 @@ const BuyerDashboardPage = () => {
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
     const [dateRange, setDateRange] = useState('30d');
+    const preferredCurrency = getBuyerCurrency();
 
     const fetchData = async () => {
         setLoading(true);
@@ -41,9 +42,6 @@ const BuyerDashboardPage = () => {
         fetchData();
     }, [dateRange]);
 
-    if (loading && !data) return <div className="p-6 max-w-7xl mx-auto"><AnalyticsSkeleton /></div>;
-    if (error) return <div className="p-6 max-w-7xl mx-auto"><DashboardHeader title="Buyer Dashboard" /><ErrorState message={error} onRetry={fetchData} /></div>;
-
     const {
         totalOrders = 0,
         activeShipmentsCount = 0,
@@ -53,6 +51,16 @@ const BuyerDashboardPage = () => {
         spendingOverTime = [],
         lastOrders = []
     } = data || {};
+
+    const formattedSpendingOverTime = React.useMemo(() => {
+        return spendingOverTime.map(item => ({
+            ...item,
+            value: convertFromPaise(item.value, preferredCurrency)
+        }));
+    }, [spendingOverTime, preferredCurrency]);
+
+    if (loading && !data) return <div className="p-6 max-w-7xl mx-auto"><AnalyticsSkeleton /></div>;
+    if (error) return <div className="p-6 max-w-7xl mx-auto"><DashboardHeader title="Buyer Dashboard" /><ErrorState message={error} onRetry={fetchData} /></div>;
 
     const hasCharts = ordersOverTime.length > 0 || spendingOverTime.length > 0;
 
@@ -92,7 +100,7 @@ const BuyerDashboardPage = () => {
                     />
                     <StatCard
                         title="Total Spending"
-                        value={formatMoney(totalSpending)}
+                        value={formatDynamicCurrency(totalSpending, preferredCurrency)}
                         icon={TrendingUp}
                         color="purple"
                         onClick={() => navigate('/buyer/orders')}
@@ -119,14 +127,14 @@ const BuyerDashboardPage = () => {
                         </ChartCard>
 
                         <ChartCard title="Spending Trend">
-                            {spendingOverTime.length > 0 ? (
+                            {formattedSpendingOverTime.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={spendingOverTime}>
+                                    <BarChart data={formattedSpendingOverTime}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                         <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                                         <Tooltip
-                                            formatter={(value) => formatMoney(value)}
+                                            formatter={(value) => formatCurrencyValue(value, preferredCurrency)}
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                         />
                                         <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -166,7 +174,7 @@ const BuyerDashboardPage = () => {
                                                 #{order.orderId ? order.orderId.slice(0, 8) : '---'}
                                             </td>
                                             <td className="px-6 py-4 text-slate-600">
-                                                {formatMoney(order.total)}
+                                                {formatDynamicCurrency(order.total, preferredCurrency)}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium 
