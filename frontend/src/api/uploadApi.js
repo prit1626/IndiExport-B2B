@@ -12,7 +12,7 @@ export const uploadFile = async (file, onProgress) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const { data } = await axiosClient.post('/upload', formData, {
+    const { data } = await axiosClient.post('upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: onProgress
             ? (e) => onProgress(Math.round((e.loaded * 100) / e.total))

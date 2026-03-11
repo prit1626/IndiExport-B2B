@@ -273,6 +273,7 @@ public class OrderService {
                 itemMap.put("qty", item.getQuantity());
                 
                 if (item.getProduct() != null) {
+                    itemMap.put("productId", item.getProduct().getId());
                     itemMap.put("thumbnailUrl", item.getProduct().getThumbnailUrl());
                     itemMap.put("unit", item.getProduct().getUnit());
                 } else {

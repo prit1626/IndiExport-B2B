@@ -2,15 +2,15 @@ import axiosClient from './axiosClient';
 
 const plansApi = {
     getPricing: async () => {
-        return await axiosClient.get('/plans/pricing');
+        return await axiosClient.get('plans/pricing');
     },
 
     initiateUpgrade: async () => {
-        return await axiosClient.post('/plans/upgrade/initiate');
+        return await axiosClient.post('plans/upgrade/initiate');
     },
 
     verifyUpgrade: async (payload) => {
-        return await axiosClient.post('/plans/upgrade/verify', payload);
+        return await axiosClient.post('plans/upgrade/verify', payload);
     }
 };
 

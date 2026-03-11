@@ -1,9 +1,13 @@
 package com.IndiExport.backend.service.dispute;
 
 import com.IndiExport.backend.dto.dispute.*;
+import com.IndiExport.backend.dto.RazorpayOrderResponse;
+import com.IndiExport.backend.dto.PaymentVerificationRequest;
+import com.IndiExport.backend.service.payment.provider.PaymentProvider;
 import com.IndiExport.backend.entity.*;
 import com.IndiExport.backend.entity.Role.RoleType;
 import com.IndiExport.backend.exception.DisputeExceptions.*;
+import com.IndiExport.backend.exception.InvalidSignatureException;
 import com.IndiExport.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +28,7 @@ public class DisputeService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final DisputeEscrowLockService escrowLockService;
+    private final PaymentProvider paymentProvider;
 
     // --- Actions ---
 
@@ -165,6 +170,58 @@ public class DisputeService {
         return mapToResponse(dispute);
     }
 
+    @Transactional
+    public RazorpayOrderResponse sellerPayRefund(UUID disputeId, UUID sellerUserId) {
+        Dispute dispute = disputeRepository.findById(disputeId)
+                .orElseThrow(() -> new DisputeNotFoundException("Dispute not found"));
+
+        // Validate Origin
+        if (!dispute.getOrder().getSeller().getUser().getId().equals(sellerUserId)) {
+            throw new DisputeAccessDeniedException("Access denied");
+        }
+
+        // Validate Status
+        if (dispute.getStatus() != DisputeStatus.RESOLVED) {
+            throw new DisputeResolutionException("Dispute is not resolved yet");
+        }
+
+        if (dispute.getResolutionAction() != DisputeResolutionAction.REFUND && 
+            dispute.getResolutionAction() != DisputeResolutionAction.PARTIAL_REFUND) {
+            throw new DisputeResolutionException("No refund required for this dispute");
+        }
+
+        // The amount can be partial or total
+        long amountToRefundPaise = dispute.getPartialRefundAmountMinor() != null && dispute.getPartialRefundAmountMinor() > 0 
+                                      ? dispute.getPartialRefundAmountMinor()
+                                      : dispute.getOrder().getTotalAmountPaise();
+
+        // Create the Razorpay Order
+        return paymentProvider.createRefundPayment(dispute, amountToRefundPaise);
+    }
+
+    @Transactional
+    public void verifySellerRefund(UUID disputeId, UUID sellerUserId, PaymentVerificationRequest request) {
+        Dispute dispute = disputeRepository.findById(disputeId)
+                .orElseThrow(() -> new DisputeNotFoundException("Dispute not found"));
+
+        // Validate Origin
+        if (!dispute.getOrder().getSeller().getUser().getId().equals(sellerUserId)) {
+            throw new DisputeAccessDeniedException("Access denied");
+        }
+
+        boolean isValid = paymentProvider.verifyPayment(request);
+
+        if (!isValid) {
+            throw new InvalidSignatureException("Invalid payment signature");
+        }
+
+        // Successfully verified, update the resolution notes
+        String notes = dispute.getResolutionNotes() != null ? dispute.getResolutionNotes() : "";
+        dispute.setResolutionNotes(notes + "\n[Refund Processed by Seller via Razorpay: " + request.getRazorpayPaymentId() + "]"); 
+        
+        disputeRepository.save(dispute);
+    }
+
     // --- Helpers ---
 
     private boolean canRaiseDispute(Order.OrderStatus status) {
@@ -226,9 +283,11 @@ public class DisputeService {
                 .createdAt(dispute.getCreatedAt())
                 .updatedAt(dispute.getUpdatedAt())
                 .resolvedAt(dispute.getResolvedAt())
-                .resolutionAction(dispute.getResolutionAction())
-                .resolutionNotes(dispute.getResolutionNotes())
-                .partialRefundAmountMinor(dispute.getPartialRefundAmountMinor())
+                .resolution(dispute.getResolutionAction() != null ? DisputeResponse.ResolutionDto.builder()
+                        .action(dispute.getResolutionAction())
+                        .notes(dispute.getResolutionNotes())
+                        .amountINRPaise(dispute.getPartialRefundAmountMinor())
+                        .build() : null)
                 .evidence(dispute.getEvidence() != null
                         ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
                         : List.of())
@@ -262,9 +321,11 @@ public class DisputeService {
                 .updatedAt(dispute.getUpdatedAt())
                 .resolvedAt(dispute.getResolvedAt())
                 .resolvedByAdminId(dispute.getResolvedByAdminId())
-                .resolutionAction(dispute.getResolutionAction())
-                .resolutionNotes(dispute.getResolutionNotes())
-                .partialRefundAmountMinor(dispute.getPartialRefundAmountMinor())
+                .resolution(dispute.getResolutionAction() != null ? DisputeResponse.ResolutionDto.builder()
+                        .action(dispute.getResolutionAction())
+                        .notes(dispute.getResolutionNotes())
+                        .amountINRPaise(dispute.getPartialRefundAmountMinor())
+                        .build() : null)
                 .evidence(dispute.getEvidence() != null
                         ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
                         : List.of())

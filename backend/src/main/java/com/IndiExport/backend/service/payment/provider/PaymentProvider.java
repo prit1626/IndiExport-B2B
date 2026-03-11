@@ -22,4 +22,9 @@ public interface PaymentProvider {
      * Create a payment order for plan upgrade.
      */
     RazorpayOrderResponse createPlanUpgradePayment(com.IndiExport.backend.entity.SellerProfile seller, long amountPaise);
+
+    /**
+     * Create a payment order for a dispute refund.
+     */
+    RazorpayOrderResponse createRefundPayment(com.IndiExport.backend.entity.Dispute dispute, long amountPaise);
 }
