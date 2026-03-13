@@ -51,7 +51,8 @@ const BuyerDashboardPage = () => {
         totalSpending = 0,
         ordersOverTime = [],
         spendingOverTime = [],
-        lastOrders = []
+        lastOrders = [],
+        preferredCurrency = 'INR'
     } = data || {};
 
     const hasCharts = ordersOverTime.length > 0 || spendingOverTime.length > 0;
@@ -92,7 +93,7 @@ const BuyerDashboardPage = () => {
                     />
                     <StatCard
                         title="Total Spending"
-                        value={formatMoney(totalSpending)}
+                        value={formatMoney(totalSpending, preferredCurrency)}
                         icon={TrendingUp}
                         color="purple"
                         onClick={() => navigate('/buyer/orders')}
@@ -126,7 +127,7 @@ const BuyerDashboardPage = () => {
                                         <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                                         <Tooltip
-                                            formatter={(value) => formatMoney(value)}
+                                            formatter={(value) => formatMoney(value, preferredCurrency)}
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                         />
                                         <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -166,7 +167,7 @@ const BuyerDashboardPage = () => {
                                                 #{order.orderId ? order.orderId.slice(0, 8) : '---'}
                                             </td>
                                             <td className="px-6 py-4 text-slate-600">
-                                                {formatMoney(order.total)}
+                                                {formatMoney(order.total, preferredCurrency)}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium 

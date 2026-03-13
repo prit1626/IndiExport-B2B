@@ -178,6 +178,7 @@ public class CartService {
         response.setSellerCompanyName(seller.getCompanyName());
         response.setSellerId(seller.getId());
         response.setProductActive(product.getStatus() == Product.ProductStatus.ACTIVE);
+        response.setProductImage(product.getThumbnailUrl());
         response.setAddedAt(item.getCreatedAt());
         return response;
     }

@@ -344,10 +344,123 @@ public class AnalyticsRepository {
                 .salesByCountry(salesByCountry)
                 .avgOrderValueINRPaise(avgOrderValue != null ? avgOrderValue : 0)
                 .topProducts(topProducts)
-                .rfqSuccessRate(0.0) // Placeholder
+                .rfqSuccessRate(0.0) // Will be updated by rfqOpportunityStats if needed
                 .totalProductViews(totalViews != null ? totalViews : 0)
-                .totalOrdersFromViews(totalOrders) // A simpler proxy for now
+                .totalOrdersFromViews(totalOrders)
                 .globalConversionRate(conversionRate)
+                // New Metrics
+                .viewStats(getPeriodicStats(sellerId, "product_views", "viewed_at", true))
+                .inquiryStats(getPeriodicStats(sellerId, "chats", "created_at", false))
+                .topProductsByViews(getTopProductsByPerformance(sellerId, "VIEWS"))
+                .topProductsByInquiries(getTopProductsByPerformance(sellerId, "INQUIRIES"))
+                .rfqOpportunityStats(getRfqOpportunityStats(sellerId))
+                .topBuyerCountries(getTopBuyerCountries(sellerId))
+                .recentActivities(getRecentActivities(sellerId))
                 .build();
+    }
+
+    private PeriodicStatsResponse getPeriodicStats(UUID sellerId, String table, String dateColumn, boolean joinProducts) {
+        String sql;
+        
+        if (joinProducts) {
+            sql = "SELECT " +
+                  "COUNT(*) as total, " +
+                  "COUNT(CASE WHEN t." + dateColumn + " >= ? THEN 1 END) as today, " +
+                  "COUNT(CASE WHEN t." + dateColumn + " >= ? THEN 1 END) as week, " +
+                  "COUNT(CASE WHEN t." + dateColumn + " >= ? THEN 1 END) as month " +
+                  "FROM " + table + " t JOIN products p ON p.id = t.product_id WHERE p.seller_id = ?";
+        } else {
+            sql = "SELECT " +
+                  "COUNT(*) as total, " +
+                  "COUNT(CASE WHEN " + dateColumn + " >= ? THEN 1 END) as today, " +
+                  "COUNT(CASE WHEN " + dateColumn + " >= ? THEN 1 END) as week, " +
+                  "COUNT(CASE WHEN " + dateColumn + " >= ? THEN 1 END) as month " +
+                  "FROM " + table + " WHERE seller_id = ? AND chat_type = 'INQUIRY_CHAT'";
+        }
+
+        java.sql.Timestamp today = java.sql.Timestamp.from(Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS));
+        java.sql.Timestamp week = java.sql.Timestamp.from(Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS));
+        java.sql.Timestamp month = java.sql.Timestamp.from(Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS));
+
+        return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> PeriodicStatsResponse.builder()
+                .total(rs.getLong("total"))
+                .today(rs.getLong("today"))
+                .thisWeek(rs.getLong("week"))
+                .thisMonth(rs.getLong("month"))
+                .build(), today, week, month, sellerId);
+    }
+
+    private List<ProductPerformanceResponse> getTopProductsByPerformance(UUID sellerId, String type) {
+        String sql;
+        if ("VIEWS".equals(type)) {
+            sql = "SELECT p.id, p.name, COUNT(pv.id) as count FROM products p " +
+                  "JOIN product_views pv ON p.id = pv.product_id " +
+                  "WHERE p.seller_id = ? GROUP BY p.id, p.name ORDER BY count DESC LIMIT 5";
+        } else {
+            sql = "SELECT p.id, p.name, COUNT(c.id) as count FROM products p " +
+                  "JOIN chats c ON p.id = c.product_id AND c.chat_type = 'INQUIRY_CHAT' " +
+                  "WHERE p.seller_id = ? GROUP BY p.id, p.name ORDER BY count DESC LIMIT 5";
+        }
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> ProductPerformanceResponse.builder()
+                .productId(UUID.fromString(rs.getString("id")))
+                .title(rs.getString("name"))
+                .count(rs.getLong("count"))
+                .build(), sellerId);
+    }
+
+    private RfqOpportunityStatsResponse getRfqOpportunityStats(UUID sellerId) {
+        String matchingSql = "SELECT COUNT(*) FROM rfqs r JOIN seller_export_categories sec ON sec.category_id = r.category_id WHERE sec.seller_id = ?";
+        String actionSql = "SELECT COUNT(*) as responded, COUNT(CASE WHEN status = 'ACCEPTED' THEN 1 END) as won FROM rfq_quotes WHERE seller_id = ?";
+
+        Long matching = jdbcTemplate.queryForObject(matchingSql, Long.class, sellerId);
+        Map<String, Object> actions = jdbcTemplate.queryForMap(actionSql, sellerId);
+
+        return RfqOpportunityStatsResponse.builder()
+                .matchingRfqs(matching)
+                .respondedRfqs(((Number) actions.get("responded")).longValue())
+                .wonRfqs(((Number) actions.get("won")).longValue())
+                .build();
+    }
+
+    private List<CountrySalesResponse> getTopBuyerCountries(UUID sellerId) {
+        String sql = "SELECT bp.country, COUNT(c.id) as count FROM chats c " +
+                     "JOIN buyer_profile bp ON bp.id = c.buyer_id " +
+                     "WHERE c.seller_id = ? AND c.chat_type = 'INQUIRY_CHAT' " +
+                     "GROUP BY bp.country ORDER BY count DESC LIMIT 5";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> CountrySalesResponse.builder()
+                .country(rs.getString("country"))
+                .orders(rs.getLong("count")) // Using 'orders' field to represent inquiry count in this specific DTO usage
+                .build(), sellerId);
+    }
+
+    private List<RecentActivityResponse> getRecentActivities(UUID sellerId) {
+        String sql = """
+            SELECT type, description, ts FROM (
+                (SELECT 'PRODUCT_VIEW' as type, CONCAT('A buyer viewed your product: ', p.name) as description, pv.viewed_at as ts
+                 FROM product_views pv JOIN products p ON p.id = pv.product_id 
+                 WHERE p.seller_id = ? 
+                 ORDER BY pv.viewed_at DESC LIMIT 5)
+                UNION ALL
+                (SELECT 'INQUIRY' as type, CONCAT('New inquiry received for: ', p.name) as description, c.created_at as ts
+                 FROM chats c JOIN products p ON p.id = c.product_id 
+                 WHERE c.seller_id = ? AND c.chat_type = 'INQUIRY_CHAT' 
+                 ORDER BY c.created_at DESC LIMIT 5)
+                UNION ALL
+                (SELECT 'RFQ_QUOTE' as type, CONCAT('You quoted on RFQ: ', r.title) as description, rq.created_at as ts
+                 FROM rfq_quotes rq JOIN rfqs r ON r.id = rq.rfq_id 
+                 WHERE rq.seller_id = ? 
+                 ORDER BY rq.created_at DESC LIMIT 5)
+            ) as activities
+            ORDER BY ts DESC
+            LIMIT 5
+        """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> RecentActivityResponse.builder()
+                .type(rs.getString("type"))
+                .description(rs.getString("description"))
+                .timestamp(rs.getTimestamp("ts").toInstant())
+                .build(), sellerId, sellerId, sellerId);
     }
 }

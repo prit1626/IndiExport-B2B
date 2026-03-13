@@ -233,6 +233,14 @@ public class OrderService {
         } else {
              summary.put("currency", "INR");
         }
+
+        // Add primary thumbnail from first item if available
+        if (!order.getItems().isEmpty()) {
+            Product firstProduct = order.getItems().get(0).getProduct();
+            if (firstProduct != null) {
+                summary.put("productImage", firstProduct.getThumbnailUrl());
+            }
+        }
         
         return summary;
     }
@@ -274,10 +282,10 @@ public class OrderService {
                 
                 if (item.getProduct() != null) {
                     itemMap.put("productId", item.getProduct().getId());
-                    itemMap.put("thumbnailUrl", item.getProduct().getThumbnailUrl());
+                    itemMap.put("productImage", item.getProduct().getThumbnailUrl());
                     itemMap.put("unit", item.getProduct().getUnit());
                 } else {
-                    itemMap.put("thumbnailUrl", null);
+                    itemMap.put("productImage", null);
                     itemMap.put("unit", "PCS");
                 }
                 

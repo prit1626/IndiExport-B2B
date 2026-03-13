@@ -66,7 +66,9 @@ public class RfqService {
         rfq.setShippingMode(request.getShippingMode());
         rfq.setIncoterm(request.getIncoterm());
         rfq.setTargetPriceMinor(request.getTargetPriceMinor());
-        rfq.setTargetCurrency(request.getTargetCurrency());
+        // Always use buyer's profile preferred currency — ignore frontend-sent value for security
+        String preferredCurrency = buyer.getPreferredCurrency();
+        rfq.setTargetCurrency(preferredCurrency != null && !preferredCurrency.isBlank() ? preferredCurrency : "INR");
         rfq.setStatus(RfqStatus.OPEN);
         // Category linkage if needed
         // if (request.getCategoryId() != null) ...

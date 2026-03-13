@@ -3,9 +3,12 @@ import { toast } from 'react-hot-toast';
 import { Sparkles, Loader2 } from 'lucide-react';
 import loadRazorpayScript from '../../utils/loadRazorpay';
 import plansApi from '../../api/plansApi';
+import useAuthStore from '../../store/authStore';
+import { authApi } from '../../api/authApi';
 
 const RazorpayUpgradeButton = ({ onUpgradeSuccess }) => {
     const [loading, setLoading] = useState(false);
+    const refreshUser = useAuthStore(state => state.refreshUser);
 
     const handleUpgrade = async () => {
         setLoading(true);
@@ -52,6 +55,9 @@ const RazorpayUpgradeButton = ({ onUpgradeSuccess }) => {
                         };
 
                         await plansApi.verifyUpgrade(verifyPayload);
+
+                        // Refresh user data to get updated plan info before redirect
+                        await refreshUser(authApi.getMe);
 
                         toast.success("Upgrade Successful! Welcome to Advanced Plan.");
                         if (onUpgradeSuccess) {

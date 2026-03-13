@@ -15,22 +15,36 @@ const OrderCard = ({ order }) => {
             onClick={() => navigate(`/buyer/orders/${order.id}`)}
             className="group bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden"
         >
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-1">
-                        <span className="font-bold text-slate-900">#{order.orderNumber || order.id?.slice(0, 8) || '...'}</span>
-                        <OrderStatusBadge status={order.status} />
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <Calendar size={14} />
-                        <span>Placed on {formatShortDate(order.createdAt)}</span>
-                    </div>
+            <div className="flex gap-4">
+                {/* Product Thumbnail */}
+                <div className="hidden sm:block w-20 h-20 bg-slate-50 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
+                    <img 
+                        src={order.productImage || "/images/no-image.png"} 
+                        alt="Order Thumbnail" 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => { e.target.src = "/images/no-image.png"; }}
+                    />
                 </div>
-                <div className="text-right">
-                    <p className="text-sm text-slate-500">Total Amount</p>
-                    <p className="font-bold text-slate-900 text-lg">
-                        {formatCurrency(order.grandTotalINRPaise / 100, currency)}
-                    </p>
+
+                <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <span className="font-bold text-slate-900">#{order.orderNumber || order.id?.slice(0, 8) || '...'}</span>
+                                <OrderStatusBadge status={order.status} />
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-slate-500">
+                                <Calendar size={14} />
+                                <span>Placed on {formatShortDate(order.createdAt)}</span>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-slate-500">Total Amount</p>
+                            <p className="font-bold text-slate-900 text-lg">
+                                {formatCurrency(order.grandTotalINRPaise / 100, currency)}
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 

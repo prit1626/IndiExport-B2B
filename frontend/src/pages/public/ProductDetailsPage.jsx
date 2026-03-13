@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import productApi from '../../api/productApi';
 import profileApi from '../../api/profileApi';
+import analyticsApi from '../../api/analyticsApi';
 import useAuthStore from '../../store/authStore';
 import ProductMediaCarousel from '../../components/products/ProductMediaCarousel';
 import ProductInfoPanel from '../../components/products/ProductInfoPanel';
@@ -49,6 +50,16 @@ const ProductDetailsPage = () => {
 
         if (id) {
             fetchProduct();
+            
+            // Record product view
+            const recordView = async () => {
+                try {
+                    await analyticsApi.recordView(id);
+                } catch (err) {
+                    console.warn('Failed to record product view:', err);
+                }
+            };
+            recordView();
         }
     }, [id]);
 

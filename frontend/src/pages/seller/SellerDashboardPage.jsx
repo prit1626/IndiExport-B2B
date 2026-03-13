@@ -16,13 +16,17 @@ import AnalyticsSkeleton from '../../components/analytics/AnalyticsSkeleton';
 import ErrorState from '../../components/analytics/ErrorState';
 import UpgradeLockedSection from '../../components/analytics/UpgradeLockedSection';
 import EmptyState from '../../components/analytics/EmptyState';
+import AdvancedStatsGrid from '../../components/analytics/AdvancedStatsGrid';
+import ProductPerformanceList from '../../components/analytics/ProductPerformanceList';
+import RfqOpportunityCard from '../../components/analytics/RfqOpportunityCard';
+import RecentActivityFeed from '../../components/analytics/RecentActivityFeed';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const SellerDashboardPage = () => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const isAdvanced = user?.sellerDetails?.planType === 'ADVANCED_SELLER';
+    const isAdvanced = user?.sellerPlanType === 'ADVANCED_SELLER' || user?.sellerDetails?.planType === 'ADVANCED_SELLER';
 
     const [loading, setLoading] = useState(true);
     const [basicData, setBasicData] = useState(null);
@@ -39,7 +43,7 @@ const SellerDashboardPage = () => {
             // Parallel fetch if advanced
             const promises = [analyticsApi.getSellerAnalytics({ from, to })];
             if (isAdvanced) {
-                promises.push(analyticsApi.getSellerAdvancedAnalytics({ from, to, groupBy: 'MONTH' }));
+                promises.push(analyticsApi.getSellerAdvancedMetrics({ from, to }));
             }
 
             const results = await Promise.all(promises);
@@ -75,9 +79,14 @@ const SellerDashboardPage = () => {
     } = basicData || {};
 
     const {
-        monthlyRevenue = [],
-        salesByCountry = [],
-        topProducts = []
+        viewStats = {},
+        inquiryStats = {},
+        topProductsByViews = [],
+        topProductsByInquiries = [],
+        rfqOpportunityStats = {},
+        topBuyerCountries = [],
+        recentActivities = [],
+        salesByCountry = []
     } = advancedData || {};
 
     return (
@@ -184,35 +193,53 @@ const SellerDashboardPage = () => {
                     {!isAdvanced ? (
                         <UpgradeLockedSection />
                     ) : (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
+                            {/* Product Views & Inquiries Stats */}
+                            <AdvancedStatsGrid 
+                                viewStats={viewStats} 
+                                inquiryStats={inquiryStats} 
+                            />
+
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <ChartCard title="Sales by Country">
-                                    {salesByCountry.length > 0 ? (
+                                {/* Product Performance Lists */}
+                                <ProductPerformanceList 
+                                    title="Top Viewed Products" 
+                                    products={topProductsByViews} 
+                                    metricLabel="Views" 
+                                />
+                                <ProductPerformanceList 
+                                    title="Top Inquired Products" 
+                                    products={topProductsByInquiries} 
+                                    metricLabel="Inquiries" 
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* RFQ & Countries */}
+                                <RfqOpportunityCard 
+                                    matching={rfqOpportunityStats?.matchingRfqs || 0}
+                                    responded={rfqOpportunityStats?.respondedRfqs || 0}
+                                    won={rfqOpportunityStats?.wonRfqs || 0}
+                                />
+                                
+                                <ChartCard title="Buyer Country Insights (Inquiries)">
+                                    {topBuyerCountries.length > 0 ? (
                                         <ResponsiveContainer width="100%" height={300}>
-                                            <BarChart data={salesByCountry} layout="vertical">
+                                            <BarChart data={topBuyerCountries} layout="vertical">
                                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                                                 <XAxis type="number" hide />
-                                                <YAxis dataKey="country" type="category" width={100} tick={{ fontSize: 12 }} />
+                                                <YAxis dataKey="country" type="category" width={60} tick={{ fontSize: 12 }} />
                                                 <Tooltip />
-                                                <Bar dataKey="sales" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                                                <Bar dataKey="orders" name="Inquiries" fill="#6366f1" radius={[0, 4, 4, 0]} />
                                             </BarChart>
                                         </ResponsiveContainer>
-                                    ) : <EmptyState message="No international sales yet" />}
+                                    ) : <EmptyState message="No international inquiries yet" />}
                                 </ChartCard>
+                            </div>
 
-                                <ChartCard title="Top Performing Products">
-                                    {topProducts.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height={300}>
-                                            <BarChart data={topProducts}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={60} />
-                                                <YAxis />
-                                                <Tooltip />
-                                                <Bar dataKey="revenue" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    ) : <EmptyState message="No product data available" />}
-                                </ChartCard>
+                            {/* Recent Activity Feed */}
+                            <div className="max-w-3xl">
+                                <RecentActivityFeed activities={recentActivities} />
                             </div>
                         </div>
                     )}

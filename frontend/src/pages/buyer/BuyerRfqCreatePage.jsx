@@ -239,13 +239,11 @@ export default function BuyerRfqCreatePage() {
                                 <div>
                                     <label className={labelCls}>Target Currency</label>
                                     <div className="relative">
-                                        <select
-                                            className={`${selectCls} bg-slate-100 text-slate-500 cursor-not-allowed pr-10`}
+                                        <input
+                                            className={`${inputCls} bg-slate-100 text-slate-600 cursor-not-allowed pr-10`}
                                             value={form.targetCurrency}
-                                            disabled
-                                        >
-                                            {['USD', 'EUR', 'GBP', 'AED', 'JPY', 'INR'].map(c => <option key={c}>{c}</option>)}
-                                        </select>
+                                            readOnly
+                                        />
                                         <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
                                             <span className="text-slate-400">🔒</span>
                                         </div>

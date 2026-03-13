@@ -1,28 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, ShieldCheck, Zap, Globe, MessageCircle, BarChart3, Package } from 'lucide-react';
 import plansApi from '../../api/plansApi';
+import profileApi from '../../api/profileApi';
 import { formatMoney } from '../../utils/formatMoney';
 import RazorpayUpgradeButton from '../../components/payment/RazorpayUpgradeButton';
 
 const UpgradePlanPage = () => {
-    const [pricePaise, setPricePaise] = React.useState(299900); // Admin default
-    const [isLoading, setIsLoading] = React.useState(true);
+    const [pricePaise, setPricePaise] = useState(299900); // Admin default
+    const [isLoading, setIsLoading] = useState(true);
+    const [currentPlan, setCurrentPlan] = useState(null);
 
-    React.useEffect(() => {
-        const fetchPricing = async () => {
+    useEffect(() => {
+        const fetchPricingAndProfile = async () => {
             try {
-                const { data } = await plansApi.getPricing();
-                if (data.advancedPlanPricePaise) {
-                    setPricePaise(data.advancedPlanPricePaise);
+                // Fetch pricing
+                const pricingRes = await plansApi.getPricing();
+                if (pricingRes.data?.advancedPlanPricePaise) {
+                    setPricePaise(pricingRes.data.advancedPlanPricePaise);
+                }
+
+                // Fetch seller profile for plan info
+                const profileRes = await profileApi.getSellerProfile();
+                if (profileRes.data?.currentPlan) {
+                    setCurrentPlan(profileRes.data.currentPlan);
                 }
             } catch (error) {
-                console.error("Failed to fetch pricing:", error);
+                console.error("Failed to fetch data:", error);
             } finally {
                 setIsLoading(false);
             }
         };
-        fetchPricing();
+        fetchPricingAndProfile();
     }, []);
 
     const features = [
@@ -128,15 +137,22 @@ const UpgradePlanPage = () => {
                             </div>
                         </div>
 
-                        {/* Basic Plan Mockup */}
+                        {/* Current Plan Section */}
                         <div className="mt-12 bg-brand-50 rounded-2xl p-6 border border-brand-200 flex items-center justify-between">
                             <div>
-                                <h4 className="font-bold text-brand-800">Current Plan: Advanced Seller</h4>
-                                <p className="text-sm text-brand-600">Unlimited Active Products</p>
+                                <h4 className="font-bold text-brand-800">
+                                    Current Plan: {currentPlan === 'ADVANCED_SELLER' ? 'Advanced Seller' : 'Basic Seller'}
+                                </h4>
+                                <p className="text-sm text-brand-600">
+                                    {currentPlan === 'ADVANCED_SELLER' ? 'Unlimited Active Products' : '3–5 Active Products'}
+                                </p>
                             </div>
-                            <span className="px-3 py-1 bg-brand-500 text-white text-xs font-bold rounded-lg uppercase">
-                                Active
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="px-3 py-1 bg-brand-500 text-white text-xs font-bold rounded-lg uppercase">
+                                    Active
+                                </span>
+                                <span className="text-[10px] text-brand-400 font-medium">Status: ACTIVE</span>
+                            </div>
                         </div>
                     </div>
                 </div>

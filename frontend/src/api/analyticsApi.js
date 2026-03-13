@@ -10,8 +10,14 @@ const analyticsApi = {
     getSellerAdvancedAnalytics: async (params) => {
         return await axiosClient.get('analytics/seller/advanced', { params });
     },
+    getSellerAdvancedMetrics: async (params) => {
+        return await axiosClient.get('seller/advanced-analytics', { params });
+    },
     getAdminAnalytics: async (params) => {
         return await axiosClient.get('analytics/admin', { params });
+    },
+    recordView: async (productId, country) => {
+        return await axiosClient.post(`analytics/views/${productId}`, null, { params: { country } });
     }
 };
 

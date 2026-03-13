@@ -19,4 +19,5 @@ public class BuyerDashboardAnalyticsResponse {
     private List<ChartPointResponse> ordersOverTime;
     private List<ChartPointResponse> spendingOverTime;
     private List<AnalyticsOrderSummaryDTO> lastOrders;
+    private String preferredCurrency;
 }

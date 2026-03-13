@@ -30,6 +30,22 @@ const useAuthStore = create((set, get) => ({
             } else if (user.role && !user.roles) {
                 user.roles = [user.role];
             }
+
+            // Normalize plan information for sellers
+            if (user.role === 'SELLER' || user.roles?.includes('SELLER')) {
+                const planFromDetails = user.sellerDetails?.planType;
+                const planFromUserInfo = user.sellerPlanType;
+                
+                // Ensure both fields exist and match if either is present
+                const planValue = planFromDetails || planFromUserInfo;
+                if (planValue) {
+                    user.sellerPlanType = planValue;
+                    if (user.sellerDetails) {
+                        user.sellerDetails.planType = planValue;
+                    }
+                }
+            }
+
             localStorage.setItem("user", JSON.stringify(user));
         } else {
             localStorage.removeItem("user");

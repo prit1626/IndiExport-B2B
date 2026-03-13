@@ -1,5 +1,7 @@
 package com.IndiExport.backend.service.analytics;
 
+import com.IndiExport.backend.service.currency.CurrencyConversionService;
+
 import com.IndiExport.backend.dto.analytics.*;
 import com.IndiExport.backend.entity.Product;
 import com.IndiExport.backend.entity.ProductView;
@@ -32,6 +34,7 @@ public class AnalyticsService {
     private final BuyerProfileRepository buyerProfileRepository;
     private final ProductViewRepository productViewRepository;
     private final ProductRepository productRepository;
+    private final CurrencyConversionService currencyService;
 
     // Maximum allowed date range for standard queries (e.g., 1 year)
     private static final long MAX_DAYS_RANGE = 365;
@@ -43,7 +46,32 @@ public class AnalyticsService {
         var buyerProfile = buyerProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Buyer profile not found"));
         
-        return analyticsRepository.getBuyerAnalytics(buyerProfile.getId(), from, to);
+        BuyerDashboardAnalyticsResponse response = analyticsRepository.getBuyerAnalytics(buyerProfile.getId(), from, to);
+        String prefCurrency = buyerProfile.getPreferredCurrency() != null ? buyerProfile.getPreferredCurrency() : "INR";
+        response.setPreferredCurrency(prefCurrency);
+
+        if (!"INR".equals(prefCurrency)) {
+            if (response.getTotalSpending() != null && response.getTotalSpending() > 0) {
+                long converted = currencyService.convertFromINR(response.getTotalSpending(), prefCurrency).convertedAmountMinor();
+                response.setTotalSpending(converted);
+            }
+            if (response.getSpendingOverTime() != null) {
+                response.getSpendingOverTime().forEach(point -> {
+                    if (point.getValue() != null && point.getValue() > 0) {
+                        point.setValue(currencyService.convertFromINR(point.getValue(), prefCurrency).convertedAmountMinor());
+                    }
+                });
+            }
+            if (response.getLastOrders() != null) {
+                response.getLastOrders().forEach(order -> {
+                    if (order.getTotal() != null && order.getTotal() > 0) {
+                        order.setTotal(currencyService.convertFromINR(order.getTotal(), prefCurrency).convertedAmountMinor());
+                    }
+                });
+            }
+        }
+        
+        return response;
     }
 
     @Transactional(readOnly = true)

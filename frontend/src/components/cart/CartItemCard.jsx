@@ -28,11 +28,12 @@ const CartItemCard = ({ item }) => {
             <div className="flex flex-col sm:flex-row gap-6">
                 {/* Thumbnail */}
                 <div className="w-full sm:w-24 h-24 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
-                    {item.thumbnailUrl ? (
-                        <img src={item.thumbnailUrl} alt={item.productName} className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs">No Image</div>
-                    )}
+                    <img 
+                        src={item.productImage || "/images/no-image.png"} 
+                        alt={item.productName} 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => { e.target.src = "/images/no-image.png"; }}
+                    />
                 </div>
 
                 {/* Details */}

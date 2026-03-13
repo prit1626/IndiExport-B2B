@@ -73,6 +73,7 @@ public class CartDto {
         private String sellerCompanyName;
         private UUID sellerId;
         private boolean productActive;
+        private String productImage;
         private LocalDateTime addedAt;
 
         public CartItemResponse() {}
@@ -104,6 +105,8 @@ public class CartDto {
         public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
         public boolean isProductActive() { return productActive; }
         public void setProductActive(boolean productActive) { this.productActive = productActive; }
+        public String getProductImage() { return productImage; }
+        public void setProductImage(String productImage) { this.productImage = productImage; }
         public LocalDateTime getAddedAt() { return addedAt; }
         public void setAddedAt(LocalDateTime addedAt) { this.addedAt = addedAt; }
     }
