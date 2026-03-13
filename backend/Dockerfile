@@ -1,20 +1,12 @@
-# Use official Maven image with Java 17
-FROM maven:3.9.9-eclipse-temurin-17
-
-# Set working directory
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
-
-# Copy project files
 COPY . .
-
-# Build the Spring Boot project
 RUN mvn clean package -DskipTests
 
-# Render provides dynamic port
-ENV PORT=8080
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose port
 EXPOSE 8080
 
-# Run the application
-CMD ["sh", "-c", "java -jar target/*.jar --server.port=$PORT"]
+CMD ["java","-jar","app.jar"]
