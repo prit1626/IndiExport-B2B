@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import disputeApi from '../../api/disputeApi';
 import DisputeCard from '../../components/disputes/DisputeCard';
 import DisputeDetailsModal from '../../components/disputes/DisputeDetailsModal';
@@ -11,6 +11,7 @@ import Pagination from '../../components/common/Pagination';
 
 const BuyerDisputesPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [disputes, setDisputes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDispute, setSelectedDispute] = useState(null);
@@ -52,6 +53,15 @@ const BuyerDisputesPage = () => {
         setSearchParams({ page: 0, status: newStatus });
     };
 
+    const handleViewDetails = async (dispute) => {
+        try {
+            const { data } = await disputeApi.buyerGetDisputeById(dispute.id);
+            setSelectedDispute(data.data || data);
+        } catch (error) {
+            toast.error('Failed to load dispute details');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
             {/* Header */}
@@ -62,7 +72,7 @@ const BuyerDisputesPage = () => {
                         <p className="text-slate-500 text-sm mt-1">Manage and track your order issues</p>
                     </div>
                     <button
-                        onClick={() => setIsRaiseModalOpen(true)}
+                        onClick={() => navigate('/buyer/orders')}
                         className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-all active:scale-95"
                     >
                         <AlertCircle size={20} /> Raise New Dispute
@@ -73,7 +83,7 @@ const BuyerDisputesPage = () => {
             <div className="container mx-auto px-4 max-w-5xl py-8">
                 {/* Filters */}
                 <div className="flex flex-wrap gap-2 mb-6">
-                    {['ALL', 'RAISED', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED'].map(status => (
+                    {['ALL', 'OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED'].map(status => (
                         <button
                             key={status}
                             onClick={() => handleStatusChange(status)}
@@ -102,10 +112,10 @@ const BuyerDisputesPage = () => {
                             You haven't raised any disputes yet. If you have an issue with an order, you can raise one here.
                         </p>
                         <button
-                            onClick={() => setIsRaiseModalOpen(true)}
+                            onClick={() => navigate('/buyer/orders')}
                             className="text-brand-600 font-bold hover:underline"
                         >
-                            Raise a Dispute properly via Orders Page
+                            Raise a Dispute via Orders Page
                         </button>
                     </div>
                 ) : (
@@ -115,7 +125,7 @@ const BuyerDisputesPage = () => {
                                 <DisputeCard
                                     key={dispute.id}
                                     dispute={dispute}
-                                    onClick={() => setSelectedDispute(dispute)}
+                                    onClick={() => handleViewDetails(dispute)}
                                 />
                             ))}
                         </div>
@@ -133,14 +143,18 @@ const BuyerDisputesPage = () => {
                 isOpen={!!selectedDispute}
                 onClose={() => setSelectedDispute(null)}
                 dispute={selectedDispute}
+                onResolve={() => {
+                    fetchDisputes();
+                    setSelectedDispute(null);
+                }}
             />
 
             <RaiseDisputeModal
                 isOpen={isRaiseModalOpen}
                 onClose={() => setIsRaiseModalOpen(false)}
                 onSuccess={fetchDisputes}
-                // In a real app, you'd select the order first, but for now we assume generic or pre-selected context
-                orderId="mock-order-id"
+                // Removed hardcoded orderId. Users should navigate from Order Details.
+                orderId={null}
             />
         </div>
     );

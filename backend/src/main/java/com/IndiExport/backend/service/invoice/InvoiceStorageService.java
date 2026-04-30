@@ -36,17 +36,28 @@ public class InvoiceStorageService {
                     "secure", true
             ));
 
+            // Use resource_type "image" with format "pdf" — this makes Cloudinary
+            // serve the file with Content-Type: application/pdf so browsers can open it.
+            // resource_type "raw" skips MIME detection and browsers fail to render it.
             Map uploadResult = cloudinary.uploader().upload(pdfBytes,
                     ObjectUtils.asMap(
                             "folder", "IndiExport/invoices",
-                            "resource_type", "raw", // Important for PDF
-                            "public_id", fileName,
-                            "overwrite", true
+                            "resource_type", "image",
+                            "format", "pdf",
+                            "public_id", fileName.replaceAll("\\.pdf$", ""), // Cloudinary appends .pdf from format
+                            "overwrite", true,
+                            "type", "upload"
                     ));
 
-            return (String) uploadResult.get("secure_url");
+            String secureUrl = (String) uploadResult.get("secure_url");
+            // Ensure the URL ends with .pdf for browser recognition
+            if (secureUrl != null && !secureUrl.endsWith(".pdf")) {
+                secureUrl = secureUrl + ".pdf";
+            }
+            return secureUrl;
         } catch (IOException e) {
             throw new RuntimeException("Invoice storage failed", e);
         }
     }
+
 }

@@ -1,7 +1,9 @@
 import React from 'react';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 
-const OrderItemsTable = ({ items, currency }) => {
+const OrderItemsTable = ({ items }) => {
+    const currency = getBuyerCurrency();
     return (
         <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -19,11 +21,12 @@ const OrderItemsTable = ({ items, currency }) => {
                             <td className="py-4 pr-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200">
-                                        {item.thumbnailUrl ? (
-                                            <img src={item.thumbnailUrl} alt={item.title} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">No Img</div>
-                                        )}
+                                        <img 
+                                            src={item.productImage || "/images/no-image.png"} 
+                                            alt={item.title} 
+                                            className="w-full h-full object-cover" 
+                                            onError={(e) => { e.target.src = "/images/no-image.png"; }}
+                                        />
                                     </div>
                                     <div>
                                         <p className="font-medium text-slate-900 line-clamp-2">{item.title}</p>
@@ -35,16 +38,10 @@ const OrderItemsTable = ({ items, currency }) => {
                                 {item.qty}
                             </td>
                             <td className="py-4 px-4 text-right text-slate-600 text-sm">
-                                {item.convertedPriceMinor
-                                    ? formatMoney(item.convertedPriceMinor, currency)
-                                    : formatMoney(item.basePriceINRPaise, 'INR')
-                                }
+                                {formatCurrency(item.basePriceINRPaise / 100, currency)}
                             </td>
                             <td className="py-4 px-4 text-right font-medium text-slate-900 text-sm">
-                                {item.convertedPriceMinor
-                                    ? formatMoney(item.convertedPriceMinor * item.qty, currency)
-                                    : formatMoney(item.basePriceINRPaise * item.qty, 'INR')
-                                }
+                                {formatCurrency((item.basePriceINRPaise * item.qty) / 100, currency)}
                             </td>
                         </tr>
                     ))}

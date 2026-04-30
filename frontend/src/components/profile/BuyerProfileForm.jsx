@@ -2,9 +2,10 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Save, User, Building2, MapPin, CreditCard, Loader2 } from 'lucide-react';
 import { requiredValidator, phoneValidator, postalCodeValidator } from '../../utils/validators';
+import useLocationAutoFill from '../../hooks/useLocationAutoFill';
 
 const BuyerProfileForm = ({ initialData, onSubmit, loading }) => {
-    const { register, handleSubmit, formState: { errors, isDirty } } = useForm({
+    const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors, isDirty } } = useForm({
         defaultValues: {
             firstName: initialData?.firstName || '',
             lastName: initialData?.lastName || '',
@@ -18,6 +19,73 @@ const BuyerProfileForm = ({ initialData, onSubmit, loading }) => {
             preferredCurrency: initialData?.preferredCurrency || 'USD'
         }
     });
+
+    const selectedCountry = watch('country');
+    const postalCodeValue = watch('postalCode');
+
+    const { loading: locationLoading, handlePostalCodeChange, handleBlur } = useLocationAutoFill({
+        postalCode: postalCodeValue,
+        country: selectedCountry,
+        setValue,
+        setError,
+        clearErrors
+    });
+
+    const { onChange: pcOnChange, onBlur: pcOnBlur, ...pcRegister } = register('postalCode', postalCodeValidator);
+
+    // Auto-update currency when country changes
+    React.useEffect(() => {
+        const countryToCurrency = {
+            'IN': 'INR',
+            'US': 'USD',
+            'GB': 'GBP',
+            'DE': 'EUR',
+            'FR': 'EUR',
+            'IT': 'EUR',
+            'ES': 'EUR',
+            'NL': 'EUR',
+            'AE': 'AED',
+            'JP': 'JPY',
+            'SG': 'SGD',
+            'AU': 'AUD',
+            'CA': 'CAD'
+        };
+
+        if (countryToCurrency[selectedCountry]) {
+            setValue('preferredCurrency', countryToCurrency[selectedCountry], { shouldDirty: true });
+        }
+    }, [selectedCountry, setValue]);
+
+    const countries = [
+        { code: 'IN', name: 'India' },
+        { code: 'US', name: 'United States' },
+        { code: 'GB', name: 'United Kingdom' },
+        { code: 'AE', name: 'United Arab Emirates' },
+        { code: 'AU', name: 'Australia' },
+        { code: 'CA', name: 'Canada' },
+        { code: 'DE', name: 'Germany' },
+        { code: 'FR', name: 'France' },
+        { code: 'IT', name: 'Italy' },
+        { code: 'ES', name: 'Spain' },
+        { code: 'NL', name: 'Netherlands' },
+        { code: 'JP', name: 'Japan' },
+        { code: 'SG', name: 'Singapore' },
+    ];
+
+    const currencies = [
+        { code: 'USD', name: 'USD - US Dollar' },
+        { code: 'EUR', name: 'EUR - Euro' },
+        { code: 'INR', name: 'INR - Indian Rupee' },
+        { code: 'GBP', name: 'GBP - British Pound' },
+        { code: 'AED', name: 'AED - UAE Dirham' },
+        { code: 'AUD', name: 'AUD - Australian Dollar' },
+        { code: 'CAD', name: 'CAD - Canadian Dollar' },
+        { code: 'JPY', name: 'JPY - Japanese Yen' },
+        { code: 'SGD', name: 'SGD - Singapore Dollar' },
+        { code: 'NZD', name: 'NZD - New Zealand Dollar' },
+        { code: 'CHF', name: 'CHF - Swiss Franc' },
+        { code: 'HKD', name: 'HKD - Hong Kong Dollar' },
+    ];
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -92,11 +160,15 @@ const BuyerProfileForm = ({ initialData, onSubmit, loading }) => {
 
                     <div className="space-y-2">
                         <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Country</label>
-                        <input
+                        <select
                             {...register('country', requiredValidator('Country'))}
-                            placeholder="ISO Code (e.g., US, DE, IN)"
-                            className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border ${errors.country ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} focus:ring-2 focus:ring-indigo-500 outline-none transition-all`}
-                        />
+                            className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border ${errors.country ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none`}
+                        >
+                            {countries.map(c => (
+                                <option key={c.code} value={c.code}>{c.name}</option>
+                            ))}
+                        </select>
+                        {errors.country && <p className="text-xs font-medium text-rose-500">{errors.country.message}</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -105,11 +177,9 @@ const BuyerProfileForm = ({ initialData, onSubmit, loading }) => {
                             {...register('preferredCurrency')}
                             className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
                         >
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="EUR">EUR - Euro</option>
-                            <option value="INR">INR - Indian Rupee</option>
-                            <option value="GBP">GBP - British Pound</option>
-                            <option value="AUD">AUD - Australian Dollar</option>
+                            {currencies.map(c => (
+                                <option key={c.code} value={c.code}>{c.name}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -151,9 +221,20 @@ const BuyerProfileForm = ({ initialData, onSubmit, loading }) => {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Postal Code</label>
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            Postal Code
+                            {locationLoading && <Loader2 size={14} className="animate-spin text-indigo-500" />}
+                        </label>
                         <input
-                            {...register('postalCode', postalCodeValidator)}
+                            {...pcRegister}
+                            onChange={(e) => {
+                                pcOnChange(e);
+                                handlePostalCodeChange(e);
+                            }}
+                            onBlur={(e) => {
+                                pcOnBlur(e);
+                                handleBlur();
+                            }}
                             className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border ${errors.postalCode ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} focus:ring-2 focus:ring-indigo-500 outline-none transition-all`}
                         />
                         {errors.postalCode && <p className="text-xs font-medium text-rose-500">{errors.postalCode.message}</p>}
@@ -166,8 +247,8 @@ const BuyerProfileForm = ({ initialData, onSubmit, loading }) => {
                     type="submit"
                     disabled={loading || !isDirty}
                     className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-white shadow-xl transition-all active:scale-95 ${loading || !isDirty
-                            ? 'bg-slate-400 cursor-not-allowed grayscale'
-                            : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-500/25'
+                        ? 'bg-slate-400 cursor-not-allowed grayscale'
+                        : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-500/25'
                         }`}
                 >
                     {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}

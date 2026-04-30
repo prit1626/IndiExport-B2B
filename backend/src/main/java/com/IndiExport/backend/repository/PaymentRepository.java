@@ -17,10 +17,10 @@ import java.util.UUID;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
-    Optional<Payment> findByOrderId(UUID orderId);
+    java.util.Optional<Payment> findFirstByOrderIdOrderByCreatedAtDesc(UUID orderId);
 
     /** Find non-failed payment for an order (for idempotent intent creation). */
-    Optional<Payment> findByOrderIdAndStatusNot(UUID orderId, PaymentStatus status);
+    java.util.Optional<Payment> findFirstByOrderIdAndStatusNotOrderByCreatedAtDesc(UUID orderId, PaymentStatus status);
 
     Optional<Payment> findByProviderPaymentIntentId(String providerPaymentIntentId);
 

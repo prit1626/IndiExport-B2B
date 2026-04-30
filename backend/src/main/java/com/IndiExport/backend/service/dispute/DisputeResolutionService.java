@@ -34,15 +34,19 @@ public class DisputeResolutionService {
         }
 
         DisputeResolutionAction action = request.getResolutionAction();
-        
+
         // Validation
         if (action == DisputeResolutionAction.PARTIAL_REFUND) {
             if (request.getPartialRefundAmountMinor() == null || request.getPartialRefundAmountMinor() <= 0) {
                 throw new InvalidRefundAmountException("Partial refund amount must be positive");
             }
-            long paymentAmount = dispute.getOrder().getPayment().getAmountMinor();
+            com.IndiExport.backend.entity.Payment latestPayment = dispute.getOrder().getLatestPayment();
+            if (latestPayment == null) {
+                throw new DisputeResolutionException("No payment found for this order");
+            }
+            long paymentAmount = latestPayment.getAmountMinor();
             if (request.getPartialRefundAmountMinor() > paymentAmount) {
-                 throw new InvalidRefundAmountException("Refund amount cannot exceed payment amount");
+                throw new InvalidRefundAmountException("Refund amount cannot exceed payment amount");
             }
         }
 
@@ -51,7 +55,7 @@ public class DisputeResolutionService {
         dispute.setResolutionNotes(request.getResolutionNotes());
         dispute.setResolvedAt(Instant.now());
         dispute.setResolvedByAdminId(adminId);
-        
+
         if (action == DisputeResolutionAction.PARTIAL_REFUND) {
             dispute.setPartialRefundAmountMinor(request.getPartialRefundAmountMinor());
         }
@@ -77,7 +81,8 @@ public class DisputeResolutionService {
     private void executeFinancialResolution(Dispute dispute, DisputeResolutionAction action) {
         log.info("Executing financial resolution for dispute {}: Action={}", dispute.getId(), action);
         // Here we would call StripeService.refund(...)
-        // For MVP, we presume the escrow unlock allows payout script to pick it up or we mark payment as REFUNDED directly.
+        // For MVP, we presume the escrow unlock allows payout script to pick it up or
+        // we mark payment as REFUNDED directly.
         // If REFUND -> Mark payment refunded
         // If PARTIAL -> Trigger partial refund, release rest
         // If REJECT -> Release to seller (standard flow picks up unlocked)

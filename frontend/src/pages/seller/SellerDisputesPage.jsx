@@ -17,10 +17,11 @@ const SellerDisputesPage = () => {
 
     const currentPage = parseInt(searchParams.get('page') || '0');
     const filterStatus = searchParams.get('status') || 'ALL';
+    const sortField = searchParams.get('sort') || 'createdAt,desc';
 
     useEffect(() => {
         fetchDisputes();
-    }, [currentPage, filterStatus]);
+    }, [currentPage, filterStatus, sortField]);
 
     const fetchDisputes = async () => {
         setLoading(true);
@@ -28,7 +29,8 @@ const SellerDisputesPage = () => {
             const params = {
                 page: currentPage,
                 size: 20,
-                status: filterStatus !== 'ALL' ? filterStatus : undefined
+                status: filterStatus !== 'ALL' ? filterStatus : undefined,
+                sort: sortField
             };
             const { data } = await disputeApi.sellerGetDisputes(params);
             setDisputes(data.content || []);
@@ -42,12 +44,25 @@ const SellerDisputesPage = () => {
     };
 
     const handlePageChange = (newPage) => {
-        setSearchParams({ page: newPage, status: filterStatus });
+        setSearchParams({ page: newPage, status: filterStatus, sort: sortField });
         window.scrollTo(0, 0);
     };
 
     const handleStatusChange = (newStatus) => {
-        setSearchParams({ page: 0, status: newStatus });
+        setSearchParams({ page: 0, status: newStatus, sort: sortField });
+    };
+
+    const handleSortChange = (e) => {
+        setSearchParams({ page: 0, status: filterStatus, sort: e.target.value });
+    };
+
+    const handleViewDetails = async (dispute) => {
+        try {
+            const { data } = await disputeApi.sellerGetDisputeById(dispute.id);
+            setSelectedDispute(data.data || data);
+        } catch (error) {
+            toast.error('Failed to load dispute details');
+        }
     };
 
     return (
@@ -63,20 +78,35 @@ const SellerDisputesPage = () => {
             </div>
 
             <div className="container mx-auto px-4 max-w-6xl py-8">
-                {/* Filters */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    {['ALL', 'RAISED', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => handleStatusChange(status)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${filterStatus === status
-                                ? 'bg-slate-800 text-white border-slate-800'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                }`}
+                {/* Filters & Sorting */}
+                <div className="flex flex-wrap gap-4 mb-6 justify-between items-center">
+                    <div className="flex flex-wrap gap-2">
+                        {['ALL', 'OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED'].map(status => (
+                            <button
+                                key={status}
+                                onClick={() => handleStatusChange(status)}
+                                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${filterStatus === status
+                                    ? 'bg-slate-800 text-white border-slate-800'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                    }`}
+                            >
+                                {status.replace('_', ' ')}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-500 font-medium">Sort by:</span>
+                        <select
+                            value={sortField}
+                            onChange={handleSortChange}
+                            className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block p-2 outline-none"
                         >
-                            {status.replace('_', ' ')}
-                        </button>
-                    ))}
+                            <option value="createdAt,desc">Newest First</option>
+                            <option value="createdAt,asc">Oldest First</option>
+                            <option value="updatedAt,desc">Recently Updated</option>
+                        </select>
+                    </div>
                 </div>
 
                 {/* List */}
@@ -101,7 +131,7 @@ const SellerDisputesPage = () => {
                                 <DisputeCard
                                     key={dispute.id}
                                     dispute={dispute}
-                                    onClick={() => setSelectedDispute(dispute)}
+                                    onClick={() => handleViewDetails(dispute)}
                                 />
                             ))}
                         </div>
@@ -119,6 +149,10 @@ const SellerDisputesPage = () => {
                 isOpen={!!selectedDispute}
                 onClose={() => setSelectedDispute(null)}
                 dispute={selectedDispute}
+                onResolve={() => {
+                    fetchDisputes();
+                    setSelectedDispute(null);
+                }}
             />
         </div>
     );

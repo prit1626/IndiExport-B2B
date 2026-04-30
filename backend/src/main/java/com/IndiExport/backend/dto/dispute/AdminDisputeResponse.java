@@ -1,7 +1,6 @@
 package com.IndiExport.backend.dto.dispute;
 
 import com.IndiExport.backend.entity.DisputeReason;
-import com.IndiExport.backend.entity.DisputeResolutionAction;
 import com.IndiExport.backend.entity.DisputeStatus;
 import com.IndiExport.backend.entity.Role.RoleType;
 import lombok.Builder;
@@ -28,13 +27,11 @@ public class AdminDisputeResponse {
     private DisputeStatus status;
     private Instant createdAt;
     private Instant updatedAt;
-    
+
     // Admin specific
     private Instant resolvedAt;
     private UUID resolvedByAdminId;
-    private DisputeResolutionAction resolutionAction;
-    private String resolutionNotes;
-    private Long partialRefundAmountMinor;
-    
+    private DisputeResponse.ResolutionDto resolution;
     private List<EvidenceResponse> evidence;
+    private DisputeResponse.OrderSummaryDto orderSummary;
 }

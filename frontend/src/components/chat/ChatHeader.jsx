@@ -20,7 +20,7 @@ const ChatHeader = ({ thread, onBack }) => {
 
                 <div>
                     <h3 className="font-semibold text-slate-900 leading-tight">
-                        {thread.otherParticipantName || 'Unknown User'}
+                        {thread.otherParticipantCompanyName || thread.otherParticipantName || 'Unknown User'}
                     </h3>
                     <p className="text-xs text-brand-600 truncate max-w-[200px]">
                         Inquiry: {thread.topicTitle}

@@ -3,7 +3,7 @@ import RfqMessageBubble from './RfqMessageBubble';
 import { Loader2, ArrowUp } from 'lucide-react';
 import { groupMessages } from '../../utils/chatUtils'; // Reuse existing logic
 
-const RfqMessageList = ({ messages, currentUserId, loading, hasMore, loadingMore, onLoadMore }) => {
+const RfqMessageList = ({ messages, currentUserId, isBuyer, onProposalAccepted, loading, hasMore, loadingMore, onLoadMore }) => {
     const bottomRef = useRef(null);
     const containerRef = useRef(null);
     const prevHeightRef = useRef(0);
@@ -58,18 +58,20 @@ const RfqMessageList = ({ messages, currentUserId, loading, hasMore, loadingMore
                 </div>
             )}
 
-            {Object.entries(groupedMessages).map(([date, msgs]) => (
-                <div key={date}>
+            {groupedMessages.map((group, index) => (
+                <div key={index}>
                     <div className="flex justify-center mb-4 sticky top-0 z-10">
                         <span className="bg-slate-200/80 backdrop-blur-sm text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm uppercase tracking-wide">
-                            {date}
+                            {group.date}
                         </span>
                     </div>
-                    {msgs.map((msg) => (
+                    {group.messages.map((msg) => (
                         <RfqMessageBubble
                             key={msg.id}
                             message={msg}
                             isOwnMessage={msg.senderId === currentUserId}
+                            isBuyer={isBuyer}
+                            onProposalAccepted={onProposalAccepted}
                         />
                     ))}
                 </div>

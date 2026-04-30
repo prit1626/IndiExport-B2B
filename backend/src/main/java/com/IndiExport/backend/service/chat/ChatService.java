@@ -25,6 +25,7 @@ public class ChatService {
     private final ChatMessageService chatMessageService;
     private final com.IndiExport.backend.repository.RfqRepository rfqRepository;
     private final com.IndiExport.backend.repository.SellerProfileRepository sellerProfileRepository;
+    private final com.IndiExport.backend.repository.BuyerProfileRepository buyerProfileRepository;
 
     @Transactional
     public java.util.UUID startRfqChat(UUID sellerId, UUID rfqId) {
@@ -40,7 +41,11 @@ public class ChatService {
                     Chat chat = new Chat();
                     chat.setChatType(ChatType.RFQ_CHAT);
                     chat.setRfq(rfq);
-                    chat.setBuyer(rfq.getBuyer());
+                    
+                    BuyerProfile buyerProfile = buyerProfileRepository.findById(buyerId)
+                            .orElseThrow(() -> new com.IndiExport.backend.exception.ResourceNotFoundException("Buyer not found"));
+                    
+                    chat.setBuyer(buyerProfile);
                     chat.setSeller(sellerProfileRepository.findById(sellerId).orElseThrow());
                     chat.setStatus(ChatStatus.ACTIVE);
                     chat = chatRepository.save(chat);
@@ -127,7 +132,11 @@ public class ChatService {
         MessageResponse lastMsgDto = lastMsg != null ? chatMessageService.mapToResponse(lastMsg) : null;
 
         // Unread count
-        ChatParticipant participant = chatParticipantRepository.findByChatIdAndUserId(chat.getId(), viewerId).orElse(null);
+        UUID userId = (viewerRole == com.IndiExport.backend.entity.Role.RoleType.BUYER) 
+                ? chat.getBuyer().getUser().getId() 
+                : chat.getSeller().getUser().getId();
+                
+        ChatParticipant participant = chatParticipantRepository.findByChatIdAndUserId(chat.getId(), userId).orElse(null);
         Instant lastRead = participant != null && participant.getLastReadAt() != null ? participant.getLastReadAt() : Instant.EPOCH;
         int unread = chatParticipantRepository.countUnreadMessages(chat.getId(), lastRead);
 

@@ -22,7 +22,36 @@ const useAuthStore = create((set, get) => ({
         }));
     },
 
-    setUser: (user) => set({ user, isAuthenticated: !!user }),
+    setUser: (user) => {
+        if (user) {
+            // Normalize role vs roles from different API endpoints (LoginResponse vs MeResponse)
+            if (user.roles && !user.role) {
+                user.role = user.roles[0];
+            } else if (user.role && !user.roles) {
+                user.roles = [user.role];
+            }
+
+            // Normalize plan information for sellers
+            if (user.role === 'SELLER' || user.roles?.includes('SELLER')) {
+                const planFromDetails = user.sellerDetails?.planType;
+                const planFromUserInfo = user.sellerPlanType;
+                
+                // Ensure both fields exist and match if either is present
+                const planValue = planFromDetails || planFromUserInfo;
+                if (planValue) {
+                    user.sellerPlanType = planValue;
+                    if (user.sellerDetails) {
+                        user.sellerDetails.planType = planValue;
+                    }
+                }
+            }
+
+            localStorage.setItem("user", JSON.stringify(user));
+        } else {
+            localStorage.removeItem("user");
+        }
+        set({ user, isAuthenticated: !!user });
+    },
 
     // Actions
     login: async (apiLoginFn, credentials) => {
@@ -32,7 +61,8 @@ const useAuthStore = create((set, get) => ({
             const { accessToken, refreshToken, user } = response.data;
 
             get().setTokens({ accessToken, refreshToken });
-            set({ user, isAuthenticated: true, isLoading: false });
+            get().setUser(user);
+            set({ isLoading: false });
             return true;
         } catch (err) {
             set({
@@ -46,6 +76,7 @@ const useAuthStore = create((set, get) => ({
     logout: () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
         set({
             user: null,
             accessToken: null,
@@ -67,7 +98,8 @@ const useAuthStore = create((set, get) => ({
 
         try {
             const response = await getMeFn();
-            set({ user: response.data, isAuthenticated: true, isBootstrapping: false });
+            get().setUser(response.data);
+            set({ isBootstrapping: false });
         } catch (error) {
             get().logout();
             set({ isBootstrapping: false, isAuthenticated: false });
@@ -77,7 +109,7 @@ const useAuthStore = create((set, get) => ({
     refreshUser: async (getMeFn) => {
         try {
             const response = await getMeFn();
-            set({ user: response.data, isAuthenticated: true });
+            get().setUser(response.data);
         } catch (error) {
             console.error("Failed to refresh user:", error);
         }

@@ -56,8 +56,9 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
 
-    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
-    private Payment payment;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("createdAt DESC")
+    private List<Payment> payments = new ArrayList<>();
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private ShippingQuote shippingQuote;
@@ -117,7 +118,8 @@ public class Order {
     public enum OrderStatus {
         PENDING_CONFIRMATION,  // Awaiting seller confirmation
         CONFIRMED,             // Seller accepted the order
-        PAID,                  // Payment captured (escrow holding)
+        PAID,                  // Payment captured
+        READY_TO_SHIP,         // Payment verified, seller can ship
         SHIPPED,               // Items dispatched
         IN_TRANSIT,            // In transit with logistics
         DELIVERED,             // Delivered to buyer
@@ -159,8 +161,14 @@ public class Order {
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
 
-    public Payment getPayment() { return payment; }
-    public void setPayment(Payment payment) { this.payment = payment; }
+    public List<Payment> getPayments() { return payments; }
+    public void setPayments(List<Payment> payments) { this.payments = payments; }
+
+    /** Helper to get most recent payment attempt. */
+    public Payment getLatestPayment() {
+        if (payments == null || payments.isEmpty()) return null;
+        return payments.get(0); // Assumes @OrderBy("createdAt DESC")
+    }
 
     public ShippingQuote getShippingQuote() { return shippingQuote; }
     public void setShippingQuote(ShippingQuote shippingQuote) { this.shippingQuote = shippingQuote; }

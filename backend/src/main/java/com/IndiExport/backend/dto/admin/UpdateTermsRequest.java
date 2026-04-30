@@ -18,5 +18,6 @@ public class UpdateTermsRequest {
     @NotBlank(message = "Version label is required")
     private String versionLabel;
 
+    @Builder.Default
     private boolean publishNow = true; // Default for one-click publish
 }

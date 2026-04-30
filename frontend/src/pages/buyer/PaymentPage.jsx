@@ -23,10 +23,36 @@ const PaymentPage = () => {
                 const response = await orderApi.getOrderById(id);
                 // Handle various response formats (raw body, axios response, or wrapped data)
                 let orderData = response.data || response;
-                if (orderData && orderData.data && !orderData.shippingAddress) {
+
+                // Handle string response (robustly parse if double-stringified)
+                while (typeof orderData === 'string' && orderData.trim().startsWith('{')) {
+                    try {
+                        orderData = JSON.parse(orderData);
+                    } catch (e) {
+                        console.error("Failed to parse order data string", e);
+                        break;
+                    }
+                }
+
+                // Handle potential wrapping { status: 'success', data: { ... } }
+                if (orderData && typeof orderData === 'object' && orderData.data && !orderData.id) {
                     orderData = orderData.data;
                 }
-                console.log("Fetched order data for payment:", orderData);
+
+                // Deep extraction for order.id if missing at top level
+                if (orderData && typeof orderData === 'object' && orderData !== null && !orderData.id) {
+                    const extractedId = orderData.id || orderData.orderId || orderData.currencySnapshot?.order?.id;
+                    if (extractedId) {
+                        orderData.id = extractedId;
+                    }
+                }
+
+                // Final safety: ensure id from URL is present in order object
+                if (orderData && typeof orderData === 'object' && orderData !== null && !orderData.id) {
+                    orderData.id = id;
+                }
+
+                console.log("Fetched order data for payment:", JSON.stringify(orderData).slice(0, 500) + "...");
                 setOrder(orderData);
             } catch (err) {
                 console.error("Order fetch error:", err);

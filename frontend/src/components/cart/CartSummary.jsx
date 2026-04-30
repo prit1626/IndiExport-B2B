@@ -1,9 +1,11 @@
 import React from 'react';
 import { ArrowRight, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 
 const CartSummary = ({ cart }) => {
+    const currency = getBuyerCurrency();
     const navigate = useNavigate();
 
     // Check if any item prevents checkout
@@ -21,7 +23,9 @@ const CartSummary = ({ cart }) => {
             <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-slate-600">
                     <span>Subtotal ({cart.totalItems} items)</span>
-                    <span className="font-medium text-slate-900">{formatMoney(cart.subtotalPaise)}</span>
+                    <span className="font-medium text-slate-900">
+                        {formatCurrency(cart.subtotalPaise / 100, currency)}
+                    </span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                     <span>Shipping Estimate</span>
@@ -31,8 +35,9 @@ const CartSummary = ({ cart }) => {
                 <div className="border-t border-slate-100 pt-4 flex justify-between items-end">
                     <span className="font-bold text-slate-900">Total</span>
                     <div className="text-right">
-                        <span className="block text-xl font-bold text-brand-700">{formatMoney(cart.grandTotalPaise)}</span>
-                        {/* <span className="text-xs text-slate-500">Including taxes</span> */}
+                        <span className="block text-xl font-bold text-brand-700">
+                            {formatCurrency(cart.grandTotalPaise / 100, currency)}
+                        </span>
                     </div>
                 </div>
             </div>

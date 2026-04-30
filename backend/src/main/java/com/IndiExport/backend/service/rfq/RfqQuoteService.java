@@ -24,8 +24,8 @@ public class RfqQuoteService {
     private final SellerProfileRepository sellerProfileRepository;
 
     public RfqQuoteService(RfqRepository rfqRepository,
-                            RfqQuoteRepository rfqQuoteRepository,
-                            SellerProfileRepository sellerProfileRepository) {
+            RfqQuoteRepository rfqQuoteRepository,
+            SellerProfileRepository sellerProfileRepository) {
         this.rfqRepository = rfqRepository;
         this.rfqQuoteRepository = rfqQuoteRepository;
         this.sellerProfileRepository = sellerProfileRepository;
@@ -38,7 +38,7 @@ public class RfqQuoteService {
                 .orElseThrow(() -> new RfqNotFoundException("RFQ not found"));
 
         if (rfq.getStatus() != RfqStatus.OPEN && rfq.getStatus() != RfqStatus.UNDER_NEGOTIATION) {
-             throw new InvalidRfqStateException("RFQ is not accepting quotes (Status: " + rfq.getStatus() + ")");
+            throw new InvalidRfqStateException("RFQ is not accepting quotes (Status: " + rfq.getStatus() + ")");
         }
 
         // 2. Validate Seller
@@ -69,10 +69,7 @@ public class RfqQuoteService {
         quote = rfqQuoteRepository.save(quote);
 
         // 4. Update RFQ status if it was OPEN
-        if (rfq.getStatus() == RfqStatus.OPEN) {
-            rfq.setStatus(RfqStatus.UNDER_NEGOTIATION);
-            rfqRepository.save(rfq);
-        }
+        // REMOVED: RFQ remains OPEN to allow other sellers to quote.
 
         return mapToResponse(quote);
     }

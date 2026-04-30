@@ -29,8 +29,24 @@ public class DisputeResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant resolvedAt;
-    private DisputeResolutionAction resolutionAction;
-    private String resolutionNotes;
-    private Long partialRefundAmountMinor;
+    private ResolutionDto resolution;
     private List<EvidenceResponse> evidence;
+    private OrderSummaryDto orderSummary;
+
+    @Data
+    @Builder
+    public static class ResolutionDto {
+        private DisputeResolutionAction action;
+        private String notes;
+        private Long amountINRPaise;
+    }
+
+    @Data
+    @Builder
+    public static class OrderSummaryDto {
+        private String trackingNumber;
+        private String courier;
+        private String status;
+        private String shippingMode;
+    }
 }

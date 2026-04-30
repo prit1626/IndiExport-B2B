@@ -20,8 +20,8 @@ import java.util.UUID;
         @Index(name = "idx_reviews_buyer_id", columnList = "buyer_id"),
         @Index(name = "idx_reviews_rating", columnList = "rating"),
         @Index(name = "idx_reviews_created_at", columnList = "created_at"),
-        // Enforce one review per buyer per product (MVP rule)
-        @Index(name = "idx_reviews_unique_buyer_product", columnList = "buyer_id, product_id", unique = true)
+        // Enforce one review per order
+        @Index(name = "idx_reviews_unique_order", columnList = "order_id", unique = true)
 })
 @Data
 @NoArgsConstructor

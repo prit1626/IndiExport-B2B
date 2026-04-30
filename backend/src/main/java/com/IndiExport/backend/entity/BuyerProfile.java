@@ -21,6 +21,7 @@ public class BuyerProfile {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
@@ -59,6 +60,7 @@ public class BuyerProfile {
     @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

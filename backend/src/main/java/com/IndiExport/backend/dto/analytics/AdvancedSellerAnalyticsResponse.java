@@ -21,4 +21,13 @@ public class AdvancedSellerAnalyticsResponse {
     private Long totalProductViews;
     private Long totalOrdersFromViews; // Approximation
     private Double globalConversionRate;
+
+    // Advanced Metrics
+    private PeriodicStatsResponse viewStats;
+    private PeriodicStatsResponse inquiryStats;
+    private List<ProductPerformanceResponse> topProductsByViews;
+    private List<ProductPerformanceResponse> topProductsByInquiries;
+    private RfqOpportunityStatsResponse rfqOpportunityStats;
+    private List<CountrySalesResponse> topBuyerCountries;
+    private List<RecentActivityResponse> recentActivities;
 }

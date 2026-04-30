@@ -1,13 +1,31 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { MapPin, Phone, User, Globe, Building } from 'lucide-react';
+import { MapPin, Phone, User, Globe, Building, Loader2 } from 'lucide-react';
+import useLocationAutoFill from '../../hooks/useLocationAutoFill';
+import { postalCodeValidator } from '../../utils/validators';
 
 const commonCountries = [
     "US", "CA", "GB", "DE", "FR", "AU", "IN", "JP", "SG", "AE"
 ];
 
 const AddressForm = ({ onSubmit, disabled }) => {
-    const { register, handleSubmit, formState: { errors } } = useForm();
+    const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = useForm();
+
+    const postalCodeValue = watch('postalCode');
+    const selectedCountry = watch('country');
+
+    const { loading: locationLoading, handlePostalCodeChange, handleBlur } = useLocationAutoFill({
+        postalCode: postalCodeValue,
+        country: selectedCountry,
+        setValue,
+        setError,
+        clearErrors
+    });
+
+    const { onChange: pcOnChange, onBlur: pcOnBlur, ...pcRegister } = register("postalCode", {
+        ...postalCodeValidator,
+        required: "Postal code is required"
+    });
 
     return (
         <form id="address-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -74,9 +92,18 @@ const AddressForm = ({ onSubmit, disabled }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputField
                     label="Postal Code"
-                    {...register("postalCode", { required: "Postal code is required" })}
+                    {...pcRegister}
+                    onChange={(e) => {
+                        pcOnChange(e);
+                        handlePostalCodeChange(e);
+                    }}
+                    onBlur={(e) => {
+                        pcOnBlur(e);
+                        handleBlur();
+                    }}
                     error={errors.postalCode}
-                    disabled={disabled}
+                    disabled={disabled || locationLoading}
+                    loading={locationLoading}
                     placeholder="10001"
                 />
 
@@ -107,9 +134,12 @@ const AddressForm = ({ onSubmit, disabled }) => {
 };
 
 // Reusable Input Component restricted to this file for now
-const InputField = React.forwardRef(({ label, icon: Icon, error, disabled, ...props }, ref) => (
+const InputField = React.forwardRef(({ label, icon: Icon, error, disabled, loading, ...props }, ref) => (
     <div className="space-y-1 w-full">
-        <label className="block text-sm font-medium text-slate-700">{label}</label>
+        <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+            {label}
+            {loading && <Loader2 size={14} className="animate-spin text-brand-500" />}
+        </label>
         <div className="relative">
             {Icon && (
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">

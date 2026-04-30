@@ -15,8 +15,9 @@ public class BuyerDashboardAnalyticsResponse {
     private Long totalOrders;
     private Long activeShipmentsCount;
     private Long completedOrders;
-    private Long totalSpendingINRPaise;
-    private Long totalSpendingBuyerCurrencyMinor;
-    private String buyerCurrencyCode;
-    private List<AnalyticsOrderSummaryDTO> lastOrdersSummary;
+    private Long totalSpending;
+    private List<ChartPointResponse> ordersOverTime;
+    private List<ChartPointResponse> spendingOverTime;
+    private List<AnalyticsOrderSummaryDTO> lastOrders;
+    private String preferredCurrency;
 }

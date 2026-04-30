@@ -1,19 +1,25 @@
 package com.IndiExport.backend.dto;
 
+import java.util.UUID;
+
 public class InvoiceDownloadResponse {
+    private UUID id;
     private String fileName;
     private String contentType; // "application/pdf"
     private String downloadUrl; // Presigned URL or public URL
 
     public InvoiceDownloadResponse() {}
 
-    public InvoiceDownloadResponse(String fileName, String contentType, String downloadUrl) {
+    public InvoiceDownloadResponse(UUID id, String fileName, String contentType, String downloadUrl) {
+        this.id = id;
         this.fileName = fileName;
         this.contentType = contentType;
         this.downloadUrl = downloadUrl;
     }
 
     // Getters and Setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
 

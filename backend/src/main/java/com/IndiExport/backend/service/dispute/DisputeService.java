@@ -1,9 +1,13 @@
 package com.IndiExport.backend.service.dispute;
 
 import com.IndiExport.backend.dto.dispute.*;
+import com.IndiExport.backend.dto.RazorpayOrderResponse;
+import com.IndiExport.backend.dto.PaymentVerificationRequest;
+import com.IndiExport.backend.service.payment.provider.PaymentProvider;
 import com.IndiExport.backend.entity.*;
 import com.IndiExport.backend.entity.Role.RoleType;
 import com.IndiExport.backend.exception.DisputeExceptions.*;
+import com.IndiExport.backend.exception.InvalidSignatureException;
 import com.IndiExport.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +28,7 @@ public class DisputeService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final DisputeEscrowLockService escrowLockService;
+    private final PaymentProvider paymentProvider;
 
     // --- Actions ---
 
@@ -50,8 +55,7 @@ public class DisputeService {
         // 3. Check for existing open dispute
         boolean hasOpenDispute = disputeRepository.existsByOrderIdAndStatusIn(
                 order.getId(),
-                List.of(DisputeStatus.OPEN, DisputeStatus.EVIDENCE_REQUIRED, DisputeStatus.UNDER_REVIEW)
-        );
+                List.of(DisputeStatus.OPEN, DisputeStatus.EVIDENCE_REQUIRED, DisputeStatus.UNDER_REVIEW));
 
         if (hasOpenDispute) {
             throw new DisputeAlreadyExistsException("An open dispute already exists for this order");
@@ -94,7 +98,7 @@ public class DisputeService {
     }
 
     @Transactional
-    public EvidenceResponse addEvidence(UUID disputeId, UUID userId, AddEvidenceRequest request) {
+    public EvidenceResponse addEvidence(UUID disputeId, UUID userId, String fileUrl) {
         Dispute dispute = disputeRepository.findById(disputeId)
                 .orElseThrow(() -> new DisputeNotFoundException("Dispute not found"));
 
@@ -106,19 +110,19 @@ public class DisputeService {
         // Validate Ownership
         boolean isBuyer = dispute.getOrder().getBuyer().getUser().getId().equals(userId);
         boolean isSeller = dispute.getOrder().getSeller().getUser().getId().equals(userId);
-        
+
         if (!isBuyer && !isSeller) {
-             throw new DisputeAccessDeniedException("You are not a participant in this dispute");
+            throw new DisputeAccessDeniedException("You are not a participant in this dispute");
         }
-        
+
         RoleType role = isBuyer ? RoleType.BUYER : RoleType.SELLER;
 
         DisputeEvidence evidence = DisputeEvidence.builder()
                 .dispute(dispute)
                 .uploadedByUserId(userId)
                 .uploadedByRole(role)
-                .fileUrl(request.getFileUrl())
-                .fileType(request.getFileType() != null ? request.getFileType() : "IMAGE")
+                .fileUrl(fileUrl)
+                .fileType("IMAGE")
                 .build();
 
         return mapToEvidenceResponse(evidenceRepository.save(evidence));
@@ -127,71 +131,135 @@ public class DisputeService {
     // --- Finding / listing ---
 
     @Transactional(readOnly = true)
-    public Page<DisputeListResponse> getDisputesForBuyer(UUID buyerId, Pageable pageable) {
+    public Page<DisputeListResponse> getDisputesForBuyer(UUID buyerId, DisputeStatus status, Pageable pageable) {
+        if (status != null) {
+            return disputeRepository.findByBuyerIdAndStatus(buyerId, status, pageable)
+                    .map(this::mapToListResponse);
+        }
         return disputeRepository.findByBuyerId(buyerId, pageable)
                 .map(this::mapToListResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<DisputeListResponse> getDisputesForSeller(UUID sellerId, Pageable pageable) {
+    public Page<DisputeListResponse> getDisputesForSeller(UUID sellerId, DisputeStatus status, Pageable pageable) {
+        if (status != null) {
+            return disputeRepository.findBySellerIdAndStatus(sellerId, status, pageable)
+                    .map(this::mapToListResponse);
+        }
         return disputeRepository.findBySellerId(sellerId, pageable)
                 .map(this::mapToListResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<AdminDisputeResponse> getAllDisputesAdmin(DisputeStatus status, UUID buyerId, UUID sellerId, Pageable pageable) {
+    public Page<AdminDisputeResponse> getAllDisputesAdmin(DisputeStatus status, UUID buyerId, UUID sellerId,
+            Pageable pageable) {
         return disputeRepository.findAllByFilters(status, buyerId, sellerId, pageable)
                 .map(this::mapToAdminResponse);
     }
-    
+
     @Transactional(readOnly = true)
     public DisputeResponse getDisputeDetails(UUID disputeId, UUID userId) {
         Dispute dispute = disputeRepository.findById(disputeId)
                 .orElseThrow(() -> new DisputeNotFoundException("Dispute not found"));
-                
+
         // Access check
         if (!isAdmin(userId) && !isParticipant(dispute, userId)) {
-             throw new DisputeAccessDeniedException("Access denied");
+            throw new DisputeAccessDeniedException("Access denied");
         }
-        
+
         return mapToResponse(dispute);
+    }
+
+    @Transactional
+    public RazorpayOrderResponse sellerPayRefund(UUID disputeId, UUID sellerUserId) {
+        Dispute dispute = disputeRepository.findById(disputeId)
+                .orElseThrow(() -> new DisputeNotFoundException("Dispute not found"));
+
+        // Validate Origin
+        if (!dispute.getOrder().getSeller().getUser().getId().equals(sellerUserId)) {
+            throw new DisputeAccessDeniedException("Access denied");
+        }
+
+        // Validate Status
+        if (dispute.getStatus() != DisputeStatus.RESOLVED) {
+            throw new DisputeResolutionException("Dispute is not resolved yet");
+        }
+
+        if (dispute.getResolutionAction() != DisputeResolutionAction.REFUND && 
+            dispute.getResolutionAction() != DisputeResolutionAction.PARTIAL_REFUND) {
+            throw new DisputeResolutionException("No refund required for this dispute");
+        }
+
+        // The amount can be partial or total
+        long amountToRefundPaise = dispute.getPartialRefundAmountMinor() != null && dispute.getPartialRefundAmountMinor() > 0 
+                                      ? dispute.getPartialRefundAmountMinor()
+                                      : dispute.getOrder().getTotalAmountPaise();
+
+        // Create the Razorpay Order
+        return paymentProvider.createRefundPayment(dispute, amountToRefundPaise);
+    }
+
+    @Transactional
+    public void verifySellerRefund(UUID disputeId, UUID sellerUserId, PaymentVerificationRequest request) {
+        Dispute dispute = disputeRepository.findById(disputeId)
+                .orElseThrow(() -> new DisputeNotFoundException("Dispute not found"));
+
+        // Validate Origin
+        if (!dispute.getOrder().getSeller().getUser().getId().equals(sellerUserId)) {
+            throw new DisputeAccessDeniedException("Access denied");
+        }
+
+        boolean isValid = paymentProvider.verifyPayment(request);
+
+        if (!isValid) {
+            throw new InvalidSignatureException("Invalid payment signature");
+        }
+
+        // Successfully verified, update the resolution notes
+        String notes = dispute.getResolutionNotes() != null ? dispute.getResolutionNotes() : "";
+        dispute.setResolutionNotes(notes + "\n[Refund Processed by Seller via Razorpay: " + request.getRazorpayPaymentId() + "]"); 
+        
+        disputeRepository.save(dispute);
     }
 
     // --- Helpers ---
 
     private boolean canRaiseDispute(Order.OrderStatus status) {
-        return status == Order.OrderStatus.SHIPPED || 
-               status == Order.OrderStatus.IN_TRANSIT || 
-               status == Order.OrderStatus.DELIVERED || 
-               status == Order.OrderStatus.COMPLETED;
+        return status == Order.OrderStatus.SHIPPED ||
+                status == Order.OrderStatus.IN_TRANSIT ||
+                status == Order.OrderStatus.DELIVERED ||
+                status == Order.OrderStatus.COMPLETED;
     }
 
     // Helper to determine if user is buyer or seller for this dispute
     private RoleType determineRole(Dispute dispute, UUID userId) {
-       if (dispute.getOrder().getBuyer().getUser().getId().equals(userId)) return RoleType.BUYER;
-       if (dispute.getOrder().getSeller().getUser().getId().equals(userId)) return RoleType.SELLER;
-       throw new DisputeAccessDeniedException("User is not a participant");
+        if (dispute.getOrder().getBuyer().getUser().getId().equals(userId))
+            return RoleType.BUYER;
+        if (dispute.getOrder().getSeller().getUser().getId().equals(userId))
+            return RoleType.SELLER;
+        throw new DisputeAccessDeniedException("User is not a participant");
     }
-    
+
     private boolean isParticipant(Dispute dispute, UUID userId) {
         return dispute.getOrder().getBuyer().getUser().getId().equals(userId) ||
-               dispute.getOrder().getSeller().getUser().getId().equals(userId);
+                dispute.getOrder().getSeller().getUser().getId().equals(userId);
     }
-    
+
     // Mock admin check - secure it via @PreAuthorize in controller usually
     private boolean isAdmin(UUID userId) {
-        // In clean architecture, service shouldn't generally rely on SecurityContext directly if possible,
+        // In clean architecture, service shouldn't generally rely on SecurityContext
+        // directly if possible,
         // but here we might validly pass a role or check user entity roles
         User user = userRepository.findById(userId).orElse(null);
         return user != null && user.getRoles().stream().anyMatch(role -> role.getName() == RoleType.ADMIN);
     }
-    
+
     // Dummy helper
     private UUID getBuyerIdFromUser(UUID userId) {
         // Implementation depends on repo structure
-        return null; 
+        return null;
     }
-    
+
     private UUID getSellerIdFromUser(UUID userId) {
         return null;
     }
@@ -215,15 +283,25 @@ public class DisputeService {
                 .createdAt(dispute.getCreatedAt())
                 .updatedAt(dispute.getUpdatedAt())
                 .resolvedAt(dispute.getResolvedAt())
-                .resolutionAction(dispute.getResolutionAction())
-                .resolutionNotes(dispute.getResolutionNotes())
-                .partialRefundAmountMinor(dispute.getPartialRefundAmountMinor())
-                .evidence(dispute.getEvidence() != null 
-                    ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
-                    : List.of())
+                .resolution(dispute.getResolutionAction() != null ? DisputeResponse.ResolutionDto.builder()
+                        .action(dispute.getResolutionAction())
+                        .notes(dispute.getResolutionNotes())
+                        .amountINRPaise(dispute.getPartialRefundAmountMinor())
+                        .build() : null)
+                .evidence(dispute.getEvidence() != null
+                        ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
+                        : List.of())
+                .orderSummary(DisputeResponse.OrderSummaryDto.builder()
+                        .trackingNumber(dispute.getOrder().getTrackingNumber())
+                        .courier(dispute.getOrder().getShippingCourier())
+                        .status(dispute.getOrder().getStatus().name())
+                        .shippingMode(dispute.getOrder().getShippingQuote() != null
+                                ? dispute.getOrder().getShippingQuote().getMode().name()
+                                : "STANDARD")
+                        .build())
                 .build();
     }
-    
+
     private AdminDisputeResponse mapToAdminResponse(Dispute dispute) {
         // Similar to above but with Admin Response DTO
         return AdminDisputeResponse.builder()
@@ -243,12 +321,22 @@ public class DisputeService {
                 .updatedAt(dispute.getUpdatedAt())
                 .resolvedAt(dispute.getResolvedAt())
                 .resolvedByAdminId(dispute.getResolvedByAdminId())
-                .resolutionAction(dispute.getResolutionAction())
-                .resolutionNotes(dispute.getResolutionNotes())
-                .partialRefundAmountMinor(dispute.getPartialRefundAmountMinor())
-                .evidence(dispute.getEvidence() != null 
-                    ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
-                    : List.of())
+                .resolution(dispute.getResolutionAction() != null ? DisputeResponse.ResolutionDto.builder()
+                        .action(dispute.getResolutionAction())
+                        .notes(dispute.getResolutionNotes())
+                        .amountINRPaise(dispute.getPartialRefundAmountMinor())
+                        .build() : null)
+                .evidence(dispute.getEvidence() != null
+                        ? dispute.getEvidence().stream().map(this::mapToEvidenceResponse).collect(Collectors.toList())
+                        : List.of())
+                .orderSummary(DisputeResponse.OrderSummaryDto.builder()
+                        .trackingNumber(dispute.getOrder().getTrackingNumber())
+                        .courier(dispute.getOrder().getShippingCourier())
+                        .status(dispute.getOrder().getStatus().name())
+                        .shippingMode(dispute.getOrder().getShippingQuote() != null
+                                ? dispute.getOrder().getShippingQuote().getMode().name()
+                                : "STANDARD")
+                        .build())
                 .build();
     }
 

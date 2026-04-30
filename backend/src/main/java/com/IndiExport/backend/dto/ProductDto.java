@@ -208,7 +208,7 @@ public class ProductDto {
         public void setTags(List<String> tags) { this.tags = tags; }
         public double getAverageRating() { return averageRating; }
         public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
-        public int totalReviews() { return totalReviews; }
+        public int getTotalReviews() { return totalReviews; }
         public void setTotalReviews(int totalReviews) { this.totalReviews = totalReviews; }
         public CurrencyDto.ConvertedPriceInfo getConvertedPrice() { return convertedPrice; }
         public void setConvertedPrice(CurrencyDto.ConvertedPriceInfo convertedPrice) { this.convertedPrice = convertedPrice; }
@@ -354,10 +354,14 @@ public class ProductDto {
     public static class ProductFilterRequest {
         private String keyword;
         private UUID categoryId;
+        private String category; // New: Filter by category name
         private UUID sellerId;
         private Long minPricePaise;
         private Long maxPricePaise;
+        private Double minPrice; // New: Raw price from frontend
+        private Double maxPrice; // New: Raw price from frontend
         private Double minRating;
+        private Double rating; // Alias for minRating from frontend
         private Boolean verifiedSeller;
         private Incoterm incoterm;
         private String hsCode;
@@ -374,14 +378,22 @@ public class ProductDto {
         public void setKeyword(String keyword) { this.keyword = keyword; }
         public UUID getCategoryId() { return categoryId; }
         public void setCategoryId(UUID categoryId) { this.categoryId = categoryId; }
+        public String getCategory() { return category; }
+        public void setCategory(String category) { this.category = category; }
         public UUID getSellerId() { return sellerId; }
         public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
         public Long getMinPricePaise() { return minPricePaise; }
         public void setMinPricePaise(Long minPricePaise) { this.minPricePaise = minPricePaise; }
         public Long getMaxPricePaise() { return maxPricePaise; }
         public void setMaxPricePaise(Long maxPricePaise) { this.maxPricePaise = maxPricePaise; }
-        public Double getMinRating() { return minRating; }
+        public Double getMinPrice() { return minPrice; }
+        public void setMinPrice(Double minPrice) { this.minPrice = minPrice; }
+        public Double getMaxPrice() { return maxPrice; }
+        public void setMaxPrice(Double maxPrice) { this.maxPrice = maxPrice; }
+        public Double getMinRating() { return minRating != null ? minRating : rating; }
         public void setMinRating(Double minRating) { this.minRating = minRating; }
+        public Double getRating() { return rating; }
+        public void setRating(Double rating) { this.rating = rating; }
         public Boolean getVerifiedSeller() { return verifiedSeller; }
         public void setVerifiedSeller(Boolean verifiedSeller) { this.verifiedSeller = verifiedSeller; }
         public Incoterm getIncoterm() { return incoterm; }

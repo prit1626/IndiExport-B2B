@@ -106,14 +106,15 @@ public class CheckoutService {
             List<CartItem> sellerItems = entry.getValue();
             SellerProfile seller = sellerItems.get(0).getProduct().getSeller();
 
-            // Calculate subtotal and weight for this seller's items
+            // Calculate subtotal for this seller's items
             long orderSubtotalPaise = 0;
-            long totalWeightGrams = 0;
             for (CartItem ci : sellerItems) {
                 long lineTotal = (long) ci.getQuantity() * ci.getProduct().getPricePaise();
                 orderSubtotalPaise += lineTotal;
-                totalWeightGrams += (long) ci.getQuantity() * ci.getProduct().getWeightGrams();
             }
+
+            // Use total weight from request (in kg) converted to grams
+            long totalWeightGrams = (long) (request.getTotalWeight() * 1000);
 
             // Generate order number
             String orderNumber = "IE-" + System.currentTimeMillis() + "-" + ORDER_SEQ.getAndIncrement();

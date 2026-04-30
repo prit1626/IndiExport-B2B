@@ -4,6 +4,7 @@ import { Building2, MapPin, Globe, ShieldCheck, Mail, Phone, Package, Star, Arro
 import { motion } from 'framer-motion';
 import profileApi from '../../api/profileApi';
 import productApi from '../../api/productApi';
+import useAuthStore from '../../store/authStore';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import ProductCard from '../../components/products/ProductCard';
 import ProductGridSkeleton from '../../components/products/ProductGridSkeleton';
@@ -12,11 +13,13 @@ import ProfileErrorState from '../../components/profile/ProfileErrorState';
 
 const PublicSellerProfilePage = () => {
     const { id } = useParams();
+    const { user, isAuthenticated } = useAuthStore();
     const [profile, setProfile] = useState(null);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [error, setError] = useState(null);
+    const [preferredCurrency, setPreferredCurrency] = useState('INR');
 
     useEffect(() => {
         if (id) {
@@ -24,15 +27,34 @@ const PublicSellerProfilePage = () => {
         }
     }, [id]);
 
+    // Fetch buyer's preferred currency on mount
+    useEffect(() => {
+        if (isAuthenticated && user?.role === 'BUYER') {
+            const fetchBuyerPreferences = async () => {
+                try {
+                    const response = await profileApi.getBuyerProfile();
+                    if (response.data?.preferredCurrency) {
+                        setPreferredCurrency(response.data.preferredCurrency);
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch buyer preferences:', err);
+                    // Silently fail - keep default INR
+                }
+            };
+            fetchBuyerPreferences();
+        }
+    }, [isAuthenticated, user?.role]);
+
     const fetchData = async () => {
         setLoading(true);
         setLoadingProducts(true);
         try {
-            const profileData = await profileApi.getPublicSellerProfile(id);
-            setProfile(profileData);
+            const profileRes = await profileApi.getPublicSellerProfile(id);
+            setProfile(profileRes.data || profileRes);
 
-            const productData = await productApi.getProducts({ sellerId: id, size: 20 });
-            setProducts(productData.content || []);
+            const productRes = await productApi.getProducts({ sellerId: id, size: 20 });
+            const pData = productRes.data || productRes;
+            setProducts(pData.content || []);
 
             setError(null);
         } catch (err) {
@@ -110,12 +132,14 @@ const PublicSellerProfilePage = () => {
                                     <span className="text-slate-500 font-medium">Average Rating</span>
                                     <div className="flex items-center gap-1 text-amber-500 font-bold">
                                         <Star size={14} fill="currentColor" />
-                                        {(profile?.averageRatingMilli / 1000).toFixed(1) || '0.0'}
+                                        {profile?.averageRatingMilli ? (profile.averageRatingMilli / 1000).toFixed(1) : '0.0'}
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500 font-medium">Verified since</span>
-                                    <span className="text-slate-900 dark:text-white font-bold">{new Date(profile?.createdAt).getFullYear()}</span>
+                                    <span className="text-slate-900 dark:text-white font-bold">
+                                        {profile?.createdAt ? new Date(profile.createdAt).getFullYear() : '2026'}
+                                    </span>
                                 </div>
                             </div>
                         </div>

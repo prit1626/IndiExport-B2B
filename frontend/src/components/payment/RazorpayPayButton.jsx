@@ -36,7 +36,6 @@ const RazorpayPayButton = ({ order, onPaymentSuccess }) => {
                 currency: currency,
                 name: "IndiExport",
                 description: `Order #${order?.orderNumber || order?.id?.slice(0, 8) || '...'}`,
-                image: "/logo.png", // Ensure you have a logo or remove this
                 order_id: razorpayOrderId,
                 handler: async function (response) {
                     try {

@@ -53,7 +53,11 @@ const PublicNavbar = () => {
                             <button
                                 onClick={() => {
                                     const role = user?.role?.replace('ROLE_', '');
-                                    navigate(`/${role.toLowerCase()}/dashboard`);
+                                    if (role) {
+                                        navigate(`/${role.toLowerCase()}/dashboard`);
+                                    } else {
+                                        navigate('/auth/login');
+                                    }
                                 }}
                                 className="px-6 py-2.5 bg-brand-600 text-white font-black text-sm rounded-xl shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all"
                             >

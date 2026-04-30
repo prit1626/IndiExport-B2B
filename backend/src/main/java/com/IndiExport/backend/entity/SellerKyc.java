@@ -20,6 +20,7 @@ public class SellerKyc {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_id", nullable = false, unique = true)
     private SellerProfile seller;

@@ -1,91 +1,116 @@
-import React from 'react';
-import { FileText, Clock, Box, ShieldCheck, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { FileText, Clock, CheckCircle2, Loader2, DollarSign } from 'lucide-react';
+import rfqChatApi from '../../api/rfqChatApi';
 import toast from 'react-hot-toast';
 
-const PriceProposalMessage = ({ proposal, isOwnMessage, senderRole }) => {
+/**
+ * Rendered when messageType === 'PRICE_PROPOSAL'.
+ *
+ * Props from RfqMessageBubble:
+ *   message     – the full message object from backend
+ *   isOwnMessage – true if current user sent it
+ *   isBuyer     – true if current user is BUYER (can accept)
+ *   onAccepted  – callback(orderId) after successful accept
+ */
+const PriceProposalMessage = ({ message, isOwnMessage, isBuyer, onAccepted }) => {
+    const [accepting, setAccepting] = useState(false);
+    const [accepted, setAccepted] = useState(message.accepted || false);
 
-    // Viewer is BUYER if sender is SELLER (and vice versa for isOwnMessage check logic)
-    // Actually, simply:
-    // If I sent it (isOwnMessage=true), I am the proposer.
-    // If I received it (isOwnMessage=false), I am the viewer (Counterparty).
+    const price = message.proposedPriceMinor;
+    const currency = message.currency || 'USD';
+    const leadTime = message.leadTimeDays;
 
-    const handleAction = (action) => {
-        toast('Integration pending: ' + action, { icon: '🚧' });
+    // Format price as decimal
+    const formattedPrice = price
+        ? new Intl.NumberFormat('en-US', { style: 'decimal', maximumFractionDigits: 2 })
+            .format(price / 100)
+        : '—';
+
+    const handleAccept = async () => {
+        if (accepting || accepted) return;
+        setAccepting(true);
+        try {
+            const { data } = await rfqChatApi.acceptProposal(message.chatId, message.id);
+            setAccepted(true);
+            toast.success('Proposal accepted! Redirecting to payment…');
+            if (onAccepted) onAccepted(data.orderId);
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Failed to accept proposal';
+            toast.error(msg);
+        } finally {
+            setAccepting(false);
+        }
     };
 
     return (
-        <div className={`rounded-lg overflow-hidden border ${isOwnMessage ? 'bg-brand-50 border-brand-100' : 'bg-white border-slate-200 shadow-sm'} max-w-sm`}>
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-2xl overflow-hidden border shadow-sm max-w-xs w-full ${accepted
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : isOwnMessage
+                        ? 'bg-brand-50 border-brand-200'
+                        : 'bg-white border-slate-200'
+                }`}
+        >
             {/* Header */}
-            <div className={`px-4 py-2 flex items-center justify-between ${isOwnMessage ? 'bg-brand-100/50' : 'bg-slate-50 border-b border-slate-100'}`}>
+            <div className={`px-4 py-2.5 flex items-center justify-between ${accepted ? 'bg-emerald-100/60' : isOwnMessage ? 'bg-brand-100/50' : 'bg-amber-50'
+                }`}>
                 <div className="flex items-center gap-2">
-                    <FileText size={16} className={isOwnMessage ? 'text-brand-600' : 'text-slate-500'} />
-                    <span className={`font-semibold text-sm ${isOwnMessage ? 'text-brand-700' : 'text-slate-700'}`}>Price Proposal</span>
+                    <DollarSign size={15} className={accepted ? 'text-emerald-600' : 'text-amber-600'} />
+                    <span className="text-sm font-semibold text-slate-800">Price Proposal</span>
                 </div>
-                {/* Status Badge (Mock logic) */}
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 uppercase tracking-wide">
-                    Pending
-                </span>
+                {accepted ? (
+                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white uppercase tracking-wide">
+                        <CheckCircle2 size={10} /> Accepted
+                    </span>
+                ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">
+                        Pending
+                    </span>
+                )}
             </div>
 
-            {/* Content */}
+            {/* Body */}
             <div className="p-4 space-y-3">
                 <div className="flex justify-between items-baseline">
-                    <span className="text-sm text-slate-500">Price</span>
-                    <span className="text-xl font-bold text-slate-900">₹{(proposal.priceINRPaise / 100).toLocaleString()}</span>
+                    <span className="text-xs text-slate-500">Quoted Price</span>
+                    <span className="text-2xl font-bold text-slate-900">
+                        {currency} {formattedPrice}
+                    </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="bg-white/50 p-2 rounded border border-slate-100/50">
-                        <span className="block text-slate-400 mb-0.5">Min Qty</span>
-                        <span className="font-medium text-slate-700 flex items-center gap-1">
-                            <Box size={12} /> {proposal.minQty}
-                        </span>
-                    </div>
-                    <div className="bg-white/50 p-2 rounded border border-slate-100/50">
-                        <span className="block text-slate-400 mb-0.5">Lead Time</span>
-                        <span className="font-medium text-slate-700 flex items-center gap-1">
-                            <Clock size={12} /> {proposal.leadTimeDays} Days
-                        </span>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 rounded">
-                    <ShieldCheck size={14} className="text-green-600" />
-                    <span>Incoterm: <span className="font-semibold">{proposal.incoterm}</span></span>
-                </div>
-
-                {proposal.notes && (
-                    <div className="text-xs text-slate-500 italic border-l-2 border-slate-200 pl-2">
-                        "{proposal.notes}"
+                {leadTime && (
+                    <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                        <Clock size={13} className="text-slate-400" />
+                        <span>Lead time: <span className="font-semibold">{leadTime} days</span></span>
                     </div>
                 )}
             </div>
 
-            {/* Actions for Receiver Only */}
-            {!isOwnMessage && (
-                <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex gap-2">
-                    <button
-                        onClick={() => handleAction('Accept')}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded transition-colors"
+            {/* Actions */}
+            {!isOwnMessage && isBuyer && !accepted && (
+                <div className="px-4 pb-4">
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleAccept}
+                        disabled={accepting}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
                     >
-                        Accept
-                    </button>
-                    <button
-                        onClick={() => handleAction('Counter')}
-                        className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold py-2 rounded transition-colors"
-                    >
-                        Counter Offer
-                    </button>
+                        {accepting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                        {accepting ? 'Processing…' : 'Accept & Create Order'}
+                    </motion.button>
                 </div>
             )}
 
-            {/* Simple Status for Sender */}
-            {isOwnMessage && (
-                <div className="px-4 py-2 bg-brand-100/30 border-t border-brand-100 text-center">
-                    <span className="text-xs text-brand-600 font-medium select-none">You sent this proposal</span>
+            {isOwnMessage && !accepted && (
+                <div className="px-4 pb-3">
+                    <p className="text-xs text-brand-600 font-medium text-center">Waiting for buyer to accept</p>
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 };
 

@@ -9,7 +9,9 @@ import OrderDetailsSkeleton from '../../components/orders/OrderDetailsSkeleton';
 import OrdersErrorState from '../../components/orders/OrdersErrorState';
 import InvoiceButtons from '../../components/orders/InvoiceButtons';
 import { formatShortDate, formatTime } from '../../utils/formatDate';
-import { MapPin, Phone, Mail, Truck, CreditCard, ArrowLeft } from 'lucide-react';
+import { MapPin, Phone, Mail, Truck, CreditCard, ArrowLeft, AlertCircle, Star } from 'lucide-react';
+import RaiseDisputeModal from '../../components/disputes/RaiseDisputeModal';
+import AddReviewModal from '../../components/review/AddReviewModal';
 
 const OrderDetailsPage = () => {
     const { id } = useParams();
@@ -18,18 +20,19 @@ const OrderDetailsPage = () => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchOrder = async () => {
             try {
                 setLoading(true);
                 const response = await orderApi.getOrderById(id);
-                // Handle various response formats (raw body, axios response, or wrapped data)
                 let orderData = response.data || response;
-                if (orderData && orderData.data && !orderData.shippingAddress) {
+                // Handle potential wrapping { status: 'success', data: { ... } }
+                if (orderData && orderData.data && !orderData.items) {
                     orderData = orderData.data;
                 }
-                console.log("Fetched order data details:", orderData);
                 setOrder(orderData);
             } catch (err) {
                 console.error("Failed to fetch order details:", err);
@@ -61,7 +64,6 @@ const OrderDetailsPage = () => {
     return (
         <div className="min-h-screen bg-slate-50 py-8">
             <div className="container mx-auto px-4 max-w-5xl">
-
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div className="flex items-center gap-3">
@@ -74,14 +76,14 @@ const OrderDetailsPage = () => {
                                 <OrderStatusBadge status={order.status} />
                             </div>
                             <p className="text-sm text-slate-500 mt-1">
-                                Placed on {formatShortDate(order.createdAt)} at {formatTime(order.createdAt)}
+                                Placed on {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'} at {order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-'}
                             </p>
                         </div>
                     </div>
 
                     <div className="flex gap-3">
                         {/* Pay Button */}
-                        {(order.status === 'CREATED' || order.status === 'PENDING_CONFIRMATION') && (
+                        {(order.status === 'PENDING_CONFIRMATION' || order.status === 'CONFIRMED') && (
                             <button
                                 onClick={() => navigate(`/buyer/orders/${order.id}/pay`)}
                                 className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 transition-shadow shadow-sm active:scale-95"
@@ -99,6 +101,28 @@ const OrderDetailsPage = () => {
                             >
                                 <Truck size={18} />
                                 Track Order
+                            </button>
+                        )}
+
+                        {/* Write Review Button */}
+                        {(order.status === 'DELIVERED' || order.status === 'COMPLETED') && (
+                            <button
+                                onClick={() => setIsReviewModalOpen(true)}
+                                className="flex items-center gap-2 bg-white text-brand-600 px-4 py-2 rounded-lg border border-brand-200 font-medium hover:bg-brand-50 transition-colors shadow-sm"
+                            >
+                                <Star size={18} />
+                                Write Review
+                            </button>
+                        )}
+
+                        {/* Raise Dispute Button */}
+                        {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'COMPLETED') && (
+                            <button
+                                onClick={() => setIsDisputeModalOpen(true)}
+                                className="flex items-center gap-2 bg-white text-red-600 px-4 py-2 rounded-lg border border-red-200 font-medium hover:bg-red-50 transition-colors shadow-sm"
+                            >
+                                <AlertCircle size={18} />
+                                Raise Dispute
                             </button>
                         )}
 
@@ -200,6 +224,24 @@ const OrderDetailsPage = () => {
                     </div>
                 </div>
             </div>
+
+            <AddReviewModal
+                isOpen={isReviewModalOpen}
+                onClose={() => setIsReviewModalOpen(false)}
+                order={order}
+                onSuccess={() => {
+                    // Optionally refresh order if needed, or just toast (handled in modal)
+                }}
+            />
+
+            <RaiseDisputeModal
+                isOpen={isDisputeModalOpen}
+                onClose={() => setIsDisputeModalOpen(false)}
+                orderId={order.id}
+                onSuccess={() => {
+                    navigate('/buyer/disputes');
+                }}
+            />
         </div>
     );
 };

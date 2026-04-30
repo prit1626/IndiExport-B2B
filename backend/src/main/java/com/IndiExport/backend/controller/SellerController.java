@@ -131,6 +131,23 @@ public class SellerController {
     }
 
     /**
+     * PUT /api/v1/sellers/orders/{orderId}/status
+     * Update status of a seller order
+     */
+    @PutMapping("/orders/{orderId}/status")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<Map<String, Object>> updateSellerOrderStatus(
+            @PathVariable UUID orderId, 
+            @RequestBody Map<String, String> requestBody) {
+        UUID sellerId = getCurrentUserId();
+        String newStatus = requestBody.get("status");
+        if (newStatus == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(orderService.updateSellerOrderStatus(sellerId, orderId, newStatus));
+    }
+
+    /**
      * GET /api/v1/sellers/advanced-analytics
      * Get advanced analytics (ADVANCED_SELLER only)
      * Should be restricted to sellers with ADVANCED_SELLER plan

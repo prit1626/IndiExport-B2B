@@ -1,7 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Sparkles } from 'lucide-react';
 
 const UpgradeLockedSection = () => {
+    const navigate = useNavigate();
+
     return (
         <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 min-h-[300px] flex items-center justify-center">
             {/* Blurred Background Pattern */}
@@ -17,7 +20,10 @@ const UpgradeLockedSection = () => {
                     Gain deep insights into your sales performance, customer demographics, and product trends with our Advanced Seller plan.
                 </p>
 
-                <button className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold transition-all shadow-xl shadow-slate-200 hover:shadow-2xl hover:-translate-y-1">
+                <button
+                    onClick={() => navigate('/seller/upgrade')}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold transition-all shadow-xl shadow-slate-200 hover:shadow-2xl hover:-translate-y-1"
+                >
                     <Sparkles className="w-4 h-4 text-amber-300" />
                     Upgrade to Advanced
                 </button>

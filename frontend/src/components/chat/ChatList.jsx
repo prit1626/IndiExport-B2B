@@ -30,7 +30,7 @@ const ChatList = ({ threads = [], activeChatId, onSelect, loading, emptyMessage 
 
     return (
         <div className="flex-1 overflow-y-auto">
-            {threads.map(thread => (
+            {Array.isArray(threads) && threads.map(thread => (
                 <ChatListItem
                     key={thread.chatId}
                     thread={thread}

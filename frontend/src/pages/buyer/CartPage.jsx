@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import useCartStore from '../../store/cartStore';
+import useAuthStore from '../../store/authStore';
+import profileApi from '../../api/profileApi';
 import CartItemCard from '../../components/cart/CartItemCard';
 import CartSummary from '../../components/cart/CartSummary';
 import CartSkeleton from '../../components/cart/CartSkeleton';
@@ -9,10 +11,31 @@ import { AnimatePresence } from 'framer-motion';
 
 const CartPage = () => {
     const { cart, loading, error, fetchCart } = useCartStore();
+    const { user, isAuthenticated } = useAuthStore();
+    const [preferredCurrency, setPreferredCurrency] = useState('INR');
 
     useEffect(() => {
         fetchCart();
     }, []);
+
+    // Fetch buyer's preferred currency on mount
+    useEffect(() => {
+        if (isAuthenticated && user?.role === 'BUYER') {
+            const fetchBuyerPreferences = async () => {
+                try {
+                    const response = await profileApi.getBuyerProfile();
+                    if (response.data?.preferredCurrency) {
+                        localStorage.setItem('preferredCurrency', response.data.preferredCurrency);
+                        setPreferredCurrency(response.data.preferredCurrency);
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch buyer preferences:', err);
+                    // Silently fail - keep default INR
+                }
+            };
+            fetchBuyerPreferences();
+        }
+    }, [isAuthenticated, user?.role]);
 
     if (loading && !cart) return <CartSkeleton />;
 
@@ -45,14 +68,14 @@ const CartPage = () => {
                     <div className="flex-1 w-full space-y-4">
                         <AnimatePresence>
                             {cart.items.map(item => (
-                                <CartItemCard key={item.id} item={item} />
+                                <CartItemCard key={item.id} item={item} preferredCurrency={preferredCurrency} />
                             ))}
                         </AnimatePresence>
                     </div>
 
                     {/* Summary Sidebar */}
                     <div className="w-full lg:w-96 flex-shrink-0">
-                        <CartSummary cart={cart} />
+                        <CartSummary cart={cart} preferredCurrency={preferredCurrency} />
                     </div>
                 </div>
             </div>

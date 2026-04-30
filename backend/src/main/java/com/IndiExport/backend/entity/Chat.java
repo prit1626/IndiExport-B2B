@@ -34,6 +34,7 @@ public class Chat {
     @Column(nullable = false, length = 20)
     private ChatType chatType;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ChatStatus status = ChatStatus.ACTIVE;
@@ -54,9 +55,11 @@ public class Chat {
     @JoinColumn(name = "rfq_id")
     private RFQ rfq; // Null for INQUIRY_CHAT
 
+    @Builder.Default
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
+    @Builder.Default
     @Column(nullable = false)
     private Instant updatedAt = Instant.now();
 

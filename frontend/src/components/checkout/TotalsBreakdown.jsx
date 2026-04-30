@@ -1,15 +1,16 @@
 import React from 'react';
-import { formatMoney } from '../../utils/formatMoney';
+import { formatCurrency } from '../../utils/currencyFormatter';
+import { getBuyerCurrency } from '../../utils/getBuyerCurrency';
 import { ArrowRight, Lock, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
 const TotalsBreakdown = ({ checkoutResponse, onProceed }) => {
+    const currency = getBuyerCurrency();
     const {
         orders = [],
         totalSubtotalPaise,
         totalShippingPaise,
         grandTotalPaise,
-        grandTotalConverted,
         buyerCurrency,
         exchangeRateMicros,
         rateTimestamp
@@ -58,22 +59,21 @@ const TotalsBreakdown = ({ checkoutResponse, onProceed }) => {
                     <div className="flex justify-between text-slate-600">
                         <span>Subtotal</span>
                         <div className="text-right">
-                            <div className="font-medium text-slate-900">{formatMoney(totalSubtotalPaise)}</div>
+                            <div className="font-medium text-slate-900">{formatCurrency(totalSubtotalPaise / 100, currency)}</div>
                         </div>
                     </div>
 
                     <div className="flex justify-between text-slate-600">
                         <span>Shipping Cost</span>
                         <div className="text-right">
-                            <div className="font-medium text-slate-900">{formatMoney(totalShippingPaise)}</div>
+                            <div className="font-medium text-slate-900">{formatCurrency(totalShippingPaise / 100, currency)}</div>
                         </div>
                     </div>
 
                     <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
                         <span className="text-lg font-bold text-slate-900">Grand Total</span>
                         <div className="text-right">
-                            <div className="text-xl font-bold text-brand-700">{formatMoney(grandTotalPaise)}</div>
-                            <div className="text-sm text-brand-500 font-medium">{buyerCurrency} {(grandTotalConverted / 100).toFixed(2)}</div>
+                            <div className="text-xl font-bold text-brand-700">{formatCurrency(grandTotalPaise / 100, currency)}</div>
                         </div>
                     </div>
                 </div>

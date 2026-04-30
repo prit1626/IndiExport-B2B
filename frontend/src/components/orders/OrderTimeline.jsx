@@ -12,7 +12,7 @@ const steps = [
 
 const OrderTimeline = ({ currentStatus, timelineEvents = [] }) => {
     // Map status to index
-    const statusOrder = ['CREATED', 'PENDING_CONFIRMATION', 'CONFIRMED', 'PAID', 'PROCESSING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED'];
+    const statusOrder = ['CREATED', 'PENDING_CONFIRMATION', 'CONFIRMED', 'PAID', 'PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED'];
 
     // Normalize current status for the timeline steps
     let activeIndex = 0;
@@ -22,16 +22,17 @@ const OrderTimeline = ({ currentStatus, timelineEvents = [] }) => {
         const normalizedStatus = currentStatus === 'IN_TRANSIT' ? 'SHIPPED' :
             currentStatus === 'COMPLETED' ? 'DELIVERED' :
                 currentStatus === 'PENDING_CONFIRMATION' || currentStatus === 'CONFIRMED' ? 'CREATED' :
-                    currentStatus;
+                    currentStatus === 'READY_TO_SHIP' ? 'PROCESSING' : currentStatus;
 
         activeIndex = steps.findIndex(s => s.key === normalizedStatus);
-        // If exact match not found (e.g. PAID might be skipped if we jump to PROCESSING), find partial
+
+        // If exact match not found (e.g. PAID might be skipped if we jump to PROCESSING), find partial fallback
         if (activeIndex === -1) {
-            // Fallback logic
-            if (statusOrder.indexOf(currentStatus) >= statusOrder.indexOf('DELIVERED')) activeIndex = 4;
-            else if (statusOrder.indexOf(currentStatus) >= statusOrder.indexOf('SHIPPED')) activeIndex = 3;
-            else if (statusOrder.indexOf(currentStatus) >= statusOrder.indexOf('PROCESSING')) activeIndex = 2;
-            else if (statusOrder.indexOf(currentStatus) >= statusOrder.indexOf('PAID')) activeIndex = 1;
+            const indexInMaster = statusOrder.indexOf(currentStatus);
+            if (indexInMaster >= statusOrder.indexOf('DELIVERED')) activeIndex = 4;
+            else if (indexInMaster >= statusOrder.indexOf('SHIPPED')) activeIndex = 3;
+            else if (indexInMaster >= statusOrder.indexOf('PROCESSING')) activeIndex = 2;
+            else if (indexInMaster >= statusOrder.indexOf('PAID')) activeIndex = 1;
             else activeIndex = 0;
         }
     }

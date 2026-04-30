@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
 public class ProductSearchService {
 
     private final ProductRepository productRepository;
-    private final com.IndiExport.backend.service.currency.CurrencyConversionService currencyConversionService;
+    private final com.IndiExport.backend.service.currency.CurrencyService currencyService;
+
     @Transactional(readOnly = true)
     public Page<ProductDto.BuyerProductCardResponse> searchProducts(
             ProductDto.ProductFilterRequest filter, String targetCurrency) {
@@ -39,15 +40,8 @@ public class ProductSearchService {
                     // Enrich with converted price if currency is specified
                     if (targetCurrency != null && !targetCurrency.isBlank()) {
                         try {
-                            var result = currencyConversionService.convertFromINR(
-                                    product.getPricePaise(), targetCurrency);
-                            card.setConvertedPrice(
-                                    com.IndiExport.backend.dto.CurrencyDto.ConvertedPriceInfo.builder()
-                                            .convertedPriceMinor(result.convertedAmountMinor())
-                                            .currency(result.targetCurrency())
-                                            .exchangeRateMicros(result.exchangeRateMicros())
-                                            .rateTimestamp(result.rateTimestamp())
-                                            .build());
+                            card.setConvertedPrice(currencyService.convertFromINR(
+                                    product.getPricePaise(), targetCurrency));
                         } catch (Exception e) {
                             // Price conversion failed, skip enrichment
                         }
@@ -73,27 +67,39 @@ public class ProductSearchService {
             if (StringUtils.hasText(filter.getKeyword())) {
                 String pattern = "%" + filter.getKeyword().toLowerCase() + "%";
                 Join<Product, Tag> tagsJoin = root.join("tags", JoinType.LEFT);
-                
+
                 Predicate namePred = cb.like(cb.lower(root.get("name")), pattern);
                 Predicate descPred = cb.like(cb.lower(root.get("description")), pattern);
                 Predicate brandPred = cb.like(cb.lower(root.get("brand")), pattern);
                 Predicate tagPred = cb.like(cb.lower(tagsJoin.get("name")), pattern);
-                
+
                 predicates.add(cb.or(namePred, descPred, brandPred, tagPred));
             }
 
-            // 3. Category filter
+            // 3. Category filter (ID or Name)
             if (filter.getCategoryId() != null) {
                 Join<Product, Category> catJoin = root.join("categories", JoinType.INNER);
                 predicates.add(cb.equal(catJoin.get("id"), filter.getCategoryId()));
+            } else if (StringUtils.hasText(filter.getCategory())) {
+                Join<Product, Category> catJoin = root.join("categories", JoinType.INNER);
+                predicates.add(cb.like(cb.lower(catJoin.get("name")), "%" + filter.getCategory().toLowerCase() + "%"));
             }
 
-            // 4. Price range
-            if (filter.getMinPricePaise() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("pricePaise"), filter.getMinPricePaise()));
+            // 4. Price range (Support both Paise and raw amount)
+            Long minPaise = filter.getMinPricePaise();
+            if (minPaise == null && filter.getMinPrice() != null) {
+                minPaise = (long) (filter.getMinPrice() * 100);
             }
-            if (filter.getMaxPricePaise() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("pricePaise"), filter.getMaxPricePaise()));
+            if (minPaise != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("pricePaise"), minPaise));
+            }
+
+            Long maxPaise = filter.getMaxPricePaise();
+            if (maxPaise == null && filter.getMaxPrice() != null) {
+                maxPaise = (long) (filter.getMaxPrice() * 100);
+            }
+            if (maxPaise != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("pricePaise"), maxPaise));
             }
 
             // 5. Rating
@@ -137,7 +143,7 @@ public class ProductSearchService {
 
     private Pageable createPageable(ProductDto.ProductFilterRequest filter) {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdAt"); // Default: newest
-        
+
         if (filter.getSortBy() != null) {
             switch (filter.getSortBy()) {
                 case "priceAsc":
@@ -154,17 +160,17 @@ public class ProductSearchService {
                     break;
             }
         }
-        
+
         return PageRequest.of(filter.getPage(), filter.getSize(), sort);
     }
 
     private ProductDto.BuyerProductCardResponse mapToCardResponse(Product product) {
-        String thumbnail = product.getMedia() != null && !product.getMedia().isEmpty() 
+        String thumbnail = product.getMedia() != null && !product.getMedia().isEmpty()
                 ? product.getMedia().stream()
-                    .filter(m -> m.getMediaType() == ProductMedia.MediaType.IMAGE)
-                    .findFirst()
-                    .map(ProductMedia::getMediaUrl)
-                    .orElse(null)
+                        .filter(m -> m.getMediaType() == ProductMedia.MediaType.IMAGE)
+                        .findFirst()
+                        .map(ProductMedia::getMediaUrl)
+                        .orElse(null)
                 : null;
 
         return ProductDto.BuyerProductCardResponse.builder()

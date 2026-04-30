@@ -30,8 +30,8 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
                                    @Param("photosOnly") boolean photosOnly,
                                    Pageable pageable);
 
-    // Check for existing review by buyer on product
-    boolean existsByBuyerIdAndProductId(UUID buyerId, UUID productId);
+    // Check for existing review by order
+    boolean existsByOrderId(UUID orderId);
 
     // For admin moderation (all reviews, often sorted by reports)
     @Query("SELECT r FROM Review r LEFT JOIN r.reports rep GROUP BY r.id ORDER BY COUNT(rep) DESC")

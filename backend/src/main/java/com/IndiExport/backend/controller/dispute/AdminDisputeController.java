@@ -3,7 +3,6 @@ package com.IndiExport.backend.controller.dispute;
 import com.IndiExport.backend.dto.dispute.AdminDisputeResponse;
 import com.IndiExport.backend.dto.dispute.AdminResolveDisputeRequest;
 import com.IndiExport.backend.dto.dispute.DisputeResponse;
-import com.IndiExport.backend.entity.Dispute;
 import com.IndiExport.backend.entity.DisputeStatus;
 import com.IndiExport.backend.entity.User;
 import com.IndiExport.backend.repository.UserRepository;
@@ -54,13 +53,14 @@ public class AdminDisputeController {
 
     @PutMapping("/{disputeId}/resolve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Dispute> resolveDispute(
+    public ResponseEntity<DisputeResponse> resolveDispute(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable UUID disputeId,
             @RequestBody @Valid AdminResolveDisputeRequest request) {
         
         User user = getUser(userDetails);
-        return ResponseEntity.ok(disputeResolutionService.resolveDispute(disputeId, user.getId(), request));
+        disputeResolutionService.resolveDispute(disputeId, user.getId(), request);
+        return ResponseEntity.ok(disputeService.getDisputeDetails(disputeId, user.getId()));
     }
 
     private User getUser(UserDetails userDetails) {

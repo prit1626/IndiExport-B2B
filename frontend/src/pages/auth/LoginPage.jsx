@@ -34,8 +34,12 @@ const LoginPage = () => {
                 return navigate(from, { replace: true });
             }
 
-            if (user?.role === 'ADMIN') navigate('/admin/dashboard');
-            else if (user?.role === 'SELLER') navigate('/seller/dashboard');
+            // Normalize role for redirection
+            const normalizedRole = user?.role?.toUpperCase().replace('ROLE_', '').split(',')[0].trim() ||
+                user?.roles?.[0]?.toUpperCase().replace('ROLE_', '').trim();
+
+            if (normalizedRole === 'ADMIN') navigate('/admin/dashboard');
+            else if (normalizedRole === 'SELLER') navigate('/seller/dashboard');
             else navigate('/buyer/dashboard');
         } else {
             setServerError(useAuthStore.getState().error || 'Invalid credentials');

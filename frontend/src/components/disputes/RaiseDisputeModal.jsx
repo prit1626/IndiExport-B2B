@@ -11,10 +11,12 @@ const RaiseDisputeModal = ({ isOpen, onClose, orderId, onSuccess }) => {
     const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm();
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [reasons, setReasons] = useState([
-        'DAMAGED_GOODS',
-        'INCORRECT_ITEM',
-        'DELAYED_DELIVERY',
-        'PAYMENT_CONFLICT',
+        'ITEM_NOT_RECEIVED',
+        'NOT_AS_DESCRIBED',
+        'DAMAGED_ON_ARRIVAL',
+        'WRONG_ITEM_SENT',
+        'MISSING_PARTS',
+        'FAKE_OR_COUNTERFEIT',
         'OTHER'
     ]);
 
@@ -75,7 +77,7 @@ const RaiseDisputeModal = ({ isOpen, onClose, orderId, onSuccess }) => {
             onClose();
         } catch (error) {
             console.error(error);
-            toast.error('Failed to raise dispute');
+            toast.error(error.response?.data?.message || 'Failed to raise dispute');
         }
     };
 
